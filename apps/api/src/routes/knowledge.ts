@@ -15,6 +15,7 @@ import { authGuard, requireRole } from "../middleware/auth-guard.js";
 import { permissions, OWNER_DELETABLE_STATUSES, APPROVER_DELETABLE_STATUSES } from "../lib/rbac.js";
 import { runAiStructuring } from "../lib/ai-structuring.js";
 import { recordAudit } from "../lib/audit.js";
+import { getSettings } from "../lib/settings.js";
 
 export const knowledgeRoutes = new Hono();
 
@@ -47,9 +48,11 @@ knowledgeRoutes.post("/candidates", requireRole(permissions.runAiStructuring), a
   }
 
   const combinedText = sourceRows.map((s) => `【${s.title}】\n${s.contentText}`).join("\n\n");
+  const settings = await getSettings();
   const structured = await runAiStructuring(
     combinedText,
     sourceRows.map((s) => s.id),
+    settings?.aiModel,
   );
 
   const [created] = await db

@@ -123,4 +123,23 @@ export const api = {
 
   metrics: () => request<import("./types").Metrics>("/api/v1/metrics"),
   audit: () => request<{ items: import("./types").AuditLogEntry[] }>("/api/v1/audit"),
+
+  getSettings: () => request<import("./types").SystemSettings>("/api/v1/admin/settings"),
+  updateSettings: (patch: Partial<Pick<import("./types").SystemSettings, "stagnationAlertDays" | "showDemoBanner" | "aiModel">>) =>
+    request<import("./types").SystemSettings>("/api/v1/admin/settings", {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  listUsers: () => request<{ items: import("./types").AdminUser[] }>("/api/v1/admin/users"),
+  createUser: (input: { name: string; email: string; role: string; department?: string | null; password: string }) =>
+    request<import("./types").AdminUser>("/api/v1/admin/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateUser: (id: string, patch: { name?: string; email?: string; role?: string; department?: string | null }) =>
+    request<import("./types").AdminUser>(`/api/v1/admin/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
+  deleteUser: (id: string) => request<void>(`/api/v1/admin/users/${id}`, { method: "DELETE" }),
 };

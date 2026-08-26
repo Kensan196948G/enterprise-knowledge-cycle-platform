@@ -8,7 +8,7 @@ import { useAuth, hasAtLeastRole } from "@/lib/auth-context";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { KnowledgeItem, Metrics } from "@/lib/types";
 
-const STAGNATION_DAYS = 3;
+const DEFAULT_STAGNATION_DAYS = 3;
 
 function daysAgo(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
@@ -35,9 +35,11 @@ export default function HomePage() {
   const router = useRouter();
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [stagnationDays, setStagnationDays] = useState(DEFAULT_STAGNATION_DAYS);
 
   useEffect(() => {
     api.listKnowledge({}).then((r) => setItems(r.items));
+    api.getSettings().then((s) => setStagnationDays(s.stagnationAlertDays)).catch(() => undefined);
     if (user && hasAtLeastRole(user.role, "approver")) {
       api.metrics().then(setMetrics).catch(() => undefined);
     }
@@ -49,7 +51,7 @@ export default function HomePage() {
   const aiProcessed = items.filter((i) => i.status === "ai_processed");
   const pending = items.filter((i) => i.status === "review_pending");
   const approved = items.filter((i) => i.status === "approved");
-  const stagnant = pending.filter((i) => daysAgo(i.updatedAt) >= STAGNATION_DAYS);
+  const stagnant = pending.filter((i) => daysAgo(i.updatedAt) >= stagnationDays);
   const recentApproved = [...approved]
     .sort((a, b) => (b.approvedAt ?? b.updatedAt).localeCompare(a.approvedAt ?? a.updatedAt))
     .slice(0, 5);
@@ -106,7 +108,7 @@ export default function HomePage() {
       meta: (i) => {
         const d = daysAgo(i.updatedAt);
         const conflicts = i.aiOutput?.conflicts.length ?? 0;
-        return [d === 0 ? "今日" : `${d}日経過`, conflicts ? `矛盾 ${conflicts}件` : i.aiConfidence !== null ? `信頼度 ${pct(i.aiConfidence)}` : "-", d >= STAGNATION_DAYS];
+        return [d === 0 ? "今日" : `${d}日経過`, conflicts ? `矛盾 ${conflicts}件` : i.aiConfidence !== null ? `信頼度 ${pct(i.aiConfidence)}` : "-", d >= stagnationDays];
       },
     },
     {
@@ -136,7 +138,7 @@ export default function HomePage() {
 
       {hasAtLeastRole(user.role, "reviewer") && stagnant.length > 0 && (
         <div className="flex items-center gap-2.5 rounded-lg border border-orange-200 bg-warnBg px-3.5 py-2.5 text-[13px] text-warn">
-          ⚠ {stagnant.length}件のレビュー候補が{STAGNATION_DAYS}日以上滞留しています。優先して確認してください。
+          ⚠ {stagnant.length}件のレビュー候補が{stagnationDays}日以上滞留しています。優先して確認してください。
           <div className="flex-1" />
           <Link href="/review-queue" className="rounded-md border border-warn bg-white px-3 py-1 text-xs font-semibold text-warn">
             キューを開く

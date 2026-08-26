@@ -119,3 +119,20 @@ export interface AuditLogEntry {
   objectId: string | null;
   reason: string | null;
 }
+
+export interface SystemSettings {
+  stagnationAlertDays: number;
+  showDemoBanner: boolean;
+  aiModel: string;
+  aiConfigured: boolean;
+  updatedAt: string | null;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  department: string | null;
+  createdAt: string;
+}

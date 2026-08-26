@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth, hasAtLeastRole } from "@/lib/auth-context";
 import { api } from "@/lib/api-client";
+import type { SystemSettings } from "@/lib/types";
 
 interface NavLink {
   href: string;
@@ -35,6 +36,7 @@ const TITLES: Record<string, [string, string]> = {
   "/review-queue": ["レビューキュー", "確認待ちの知見候補"],
   "/metrics": ["KPI・分析", "ナレッジ循環の健全性を計測"],
   "/audit": ["監査ログ", "誰が・いつ・何を・どの理由で変更したか"],
+  "/settings": ["システム設定", "ユーザー・AI連携・運用パラメータの管理"],
 };
 
 function screenTitle(pathname: string): [string, string] {
@@ -48,10 +50,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [topQ, setTopQ] = useState("");
   const [pendingCount, setPendingCount] = useState(0);
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
 
   useEffect(() => {
     if (!loading && !user && !openMode) router.replace("/login");
   }, [loading, user, openMode, router]);
+
+  useEffect(() => {
+    if (user) api.getSettings().then(setSettings).catch(() => undefined);
+  }, [user]);
 
   useEffect(() => {
     if (user && hasAtLeastRole(user.role, "reviewer")) {
@@ -90,6 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       links: [
         { href: "/metrics", label: "KPI・分析", ico: "📈", min: "approver" },
         { href: "/audit", label: "監査ログ", ico: "🧾", min: "approver" },
+        { href: "/settings", label: "システム設定", ico: "⚙️", min: "admin" },
       ],
     },
   ];
@@ -196,7 +204,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="w-40 border-none bg-transparent text-[12.5px] text-ink outline-none placeholder:text-muted"
             />
           </form>
-          {openMode && (
+          {openMode && (settings?.showDemoBanner ?? true) && (
             <span className="shrink-0 whitespace-nowrap rounded-md bg-aiRefBg px-2.5 py-1.5 text-xs font-semibold text-aiRef">
               MVP検証環境・認証なし
             </span>

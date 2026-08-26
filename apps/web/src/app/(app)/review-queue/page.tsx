@@ -6,7 +6,7 @@ import { api } from "@/lib/api-client";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { KnowledgeItem } from "@/lib/types";
 
-const STAGNATION_DAYS = 3;
+const DEFAULT_STAGNATION_DAYS = 3;
 
 function daysAgo(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
@@ -15,11 +15,13 @@ function daysAgo(iso: string): number {
 /** UI-07 承認キュー: レビュー待ちの知見を滞留日数が長い順に一覧化する */
 export default function ReviewQueuePage() {
   const [items, setItems] = useState<KnowledgeItem[]>([]);
+  const [stagnationDays, setStagnationDays] = useState(DEFAULT_STAGNATION_DAYS);
 
   useEffect(() => {
     api.listKnowledge({ status: "review_pending" }).then((r) => {
       setItems([...r.items].sort((a, b) => daysAgo(b.updatedAt) - daysAgo(a.updatedAt)));
     });
+    api.getSettings().then((s) => setStagnationDays(s.stagnationAlertDays)).catch(() => undefined);
   }, []);
 
   return (
@@ -29,7 +31,7 @@ export default function ReviewQueuePage() {
         {items.length === 0 && <p className="px-[18px] py-[26px] text-center text-[13px] text-muted">レビュー待ちの知見はありません。</p>}
         {items.map((k) => {
           const d = daysAgo(k.updatedAt);
-          const late = d >= STAGNATION_DAYS;
+          const late = d >= stagnationDays;
           const conflicts = k.aiOutput?.conflicts.length ?? 0;
           return (
             <Link

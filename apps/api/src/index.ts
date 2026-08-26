@@ -9,6 +9,7 @@ import { reviewRoutes } from "./routes/reviews.js";
 import { searchRoutes } from "./routes/search.js";
 import { auditRoutes } from "./routes/audit.js";
 import { metricsRoutes } from "./routes/metrics.js";
+import { adminRoutes } from "./routes/admin.js";
 
 export function createApp() {
   const app = new Hono();
@@ -30,6 +31,7 @@ export function createApp() {
   app.route("/api/v1/search", searchRoutes);
   app.route("/api/v1/audit", auditRoutes);
   app.route("/api/v1/metrics", metricsRoutes);
+  app.route("/api/v1/admin", adminRoutes);
 
   app.notFound((c) => c.json({ error: "Not Found" }, 404));
   app.onError((err, c) => {

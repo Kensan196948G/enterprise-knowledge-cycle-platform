@@ -170,9 +170,9 @@ async function structureWithAnthropic(
   sourceText: string,
   sourceIds: string[],
   apiKey: string,
+  model: string,
 ): Promise<StructuredOutput> {
   const start = Date.now();
-  const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5";
   const systemPrompt = `あなたは建設・土木業向け社内ナレッジ循環基盤のAI構造化エンジンです。
 与えられた原文から、facts(原文に明示された事実)・inferences(推論。事実と分離)・unknowns(不明・要確認)・
 conflicts(矛盾)・review_questions(人に確認すべき事項)を抽出し、根拠のない値や条件を事実として補完しないでください。
@@ -261,17 +261,24 @@ conflicts(矛盾)・review_questions(人に確認すべき事項)を抽出し、
 export async function runAiStructuring(
   sourceText: string,
   sourceIds: string[],
+  model?: string,
 ): Promise<StructuredOutput> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey) {
     try {
-      return await structureWithAnthropic(sourceText, sourceIds, apiKey);
-    } catch {
-      // フォールバック: ルールベースエンジンで継続する
+      return await structureWithAnthropic(sourceText, sourceIds, apiKey, model ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5");
+    } catch (err) {
+      // フォールバック: ルールベースエンジンで継続する(秘密の値は出力しない)
+      console.error("[ai-structuring] Anthropic呼び出しに失敗。ルールベースへフォールバックします:", err instanceof Error ? err.message : err);
       return structureWithRules(sourceText, sourceIds);
     }
   }
   return structureWithRules(sourceText, sourceIds);
+}
+
+/** システム設定でAIが有効化されているかどうか(秘密の値自体は返さない) */
+export function isAnthropicConfigured(): boolean {
+  return !!process.env.ANTHROPIC_API_KEY;
 }
 
 export function contentHash(text: string): string {
