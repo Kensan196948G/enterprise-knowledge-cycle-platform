@@ -4,7 +4,7 @@ test("open mode: visiting root auto-logs-in without any credential entry", async
   await page.goto("/");
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { name: "ホーム" })).toBeVisible({ timeout: 10000 });
-  await expect(page.getByText("このMVP検証環境はログイン認証を無効化し")).toBeVisible();
+  await expect(page.getByText("MVP検証環境・認証なし")).toBeVisible();
 });
 
 test("open mode: role switcher changes identity without a password", async ({ page }) => {

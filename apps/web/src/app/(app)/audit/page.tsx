@@ -13,38 +13,27 @@ export default function AuditPage() {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-bold text-slate-900">監査ログ</h1>
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs text-slate-500">
-            <tr>
-              <th className="px-4 py-2">日時</th>
-              <th className="px-4 py-2">アクション</th>
-              <th className="px-4 py-2">対象</th>
-              <th className="px-4 py-2">実行者ロール</th>
-              <th className="px-4 py-2">理由</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {items.map((i) => (
-              <tr key={i.id}>
-                <td className="whitespace-nowrap px-4 py-2 text-xs text-slate-500">
-                  {new Date(i.timestamp).toLocaleString("ja-JP")}
-                </td>
-                <td className="px-4 py-2 font-mono text-xs font-semibold text-slate-700">{i.action}</td>
-                <td className="px-4 py-2 text-xs text-slate-500">
-                  {i.objectType}
-                  {i.objectId ? `:${i.objectId.slice(0, 8)}` : ""}
-                </td>
-                <td className="px-4 py-2 text-xs text-slate-500">{i.role ?? "-"}</td>
-                <td className="px-4 py-2 text-xs text-slate-500">{i.reason ?? "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {items.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">監査ログがありません。</p>}
+    <div className="mx-auto max-w-[1000px] overflow-hidden rounded-[10px] border border-borderc bg-white shadow-sm">
+      <div className="grid grid-cols-[110px_190px_1fr_130px_1fr] gap-0 border-b border-panel bg-[#FAFBFC] px-4 py-2.5 text-[11px] font-semibold text-muted">
+        <span>日時</span>
+        <span>アクション</span>
+        <span>対象</span>
+        <span>実行者ロール</span>
+        <span>理由</span>
       </div>
+      {items.map((i) => (
+        <div key={i.id} className="grid grid-cols-[110px_190px_1fr_130px_1fr] items-center gap-0 border-b border-panel px-4 py-2.5 text-xs last:border-b-0">
+          <span className="font-mono text-[11.5px] text-muted">{new Date(i.timestamp).toLocaleString("ja-JP")}</span>
+          <span className="truncate font-mono text-[11.5px] font-semibold text-subtle">{i.action}</span>
+          <span className="truncate text-subtle">
+            {i.objectType}
+            {i.objectId ? `:${i.objectId.slice(0, 8)}` : ""}
+          </span>
+          <span className="text-subtle">{i.role ?? "-"}</span>
+          <span className="truncate text-muted">{i.reason ?? "-"}</span>
+        </div>
+      ))}
+      {items.length === 0 && <p className="px-4 py-6 text-center text-sm text-muted">監査ログがありません。</p>}
     </div>
   );
 }
