@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
+    setError(null);
     try {
       const [s, u] = await Promise.all([api.getSettings(), api.listUsers()]);
       setSettings(s);
@@ -72,6 +73,20 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-[600px] rounded-[10px] border border-borderc bg-white p-8 text-center shadow-sm">
         <p className="text-sm font-semibold text-ink">この画面はシステム管理者のみ利用できます。</p>
         <p className="mt-1 text-xs text-muted">権限が必要な場合はシステム管理者に相談してください。</p>
+      </div>
+    );
+  }
+
+  if (error && (!settings || !users)) {
+    return (
+      <div className="mx-auto max-w-[600px] rounded-[10px] border border-borderc bg-white p-8 text-center shadow-sm">
+        <p className="text-sm text-reject">{error}</p>
+        <button
+          onClick={() => load()}
+          className="mt-3 rounded-lg border border-accent bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:bg-accentHover"
+        >
+          再試行
+        </button>
       </div>
     );
   }
@@ -162,7 +177,7 @@ export default function SettingsPage() {
           />
           <span className="text-[13px] text-subtle">日</span>
           <button
-            disabled={saving}
+            disabled={saving || !Number.isFinite(settings.stagnationAlertDays) || settings.stagnationAlertDays < 1 || settings.stagnationAlertDays > 14}
             onClick={() => saveSettings({ stagnationAlertDays: settings.stagnationAlertDays })}
             className="ml-2 rounded-lg border border-accent bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:bg-accentHover disabled:opacity-50"
           >
