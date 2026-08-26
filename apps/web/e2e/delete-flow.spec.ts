@@ -14,11 +14,10 @@ test("delete flow: owner can delete own draft, other contributor cannot", async 
   await pageA.goto("/register");
   await pageA.getByPlaceholder(/○○工事/).fill(uniqueTitle);
   await pageA
-    .getByPlaceholder(/課題: \.\.\. 原因/)
+    .getByPlaceholder(/課題/)
     .fill("課題: 削除フロー確認用の課題記述。結果: 削除フロー確認用の結果記述。適用条件: 削除フロー確認用の適用条件。");
-  await pageA.getByRole("button", { name: "登録してAI構造化を実行" }).click();
-  await expect(pageA.getByText("AI構造化結果（確認）")).toBeVisible({ timeout: 15000 });
-  await pageA.getByRole("link", { name: "知見詳細でレビュー依頼へ進む" }).click();
+  await pageA.getByRole("button", { name: "登録してAI構造化を確定する" }).click();
+  await pageA.waitForURL(/\/knowledge\/[0-9a-f-]+$/, { timeout: 15000 });
   await expect(pageA.getByRole("heading", { name: uniqueTitle })).toBeVisible();
   const detailUrl = pageA.url();
 
