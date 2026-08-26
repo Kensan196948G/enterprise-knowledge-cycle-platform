@@ -64,6 +64,7 @@ export const auditActionEnum = pgEnum("audit_action", [
   "REJECT",
   "ARCHIVE",
   "REVALIDATE",
+  "DELETE",
   "PERMISSION_CHANGE",
   "CONFIG_CHANGE",
 ]);

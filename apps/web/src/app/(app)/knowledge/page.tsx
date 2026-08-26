@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api-client";
+import { api, ApiError } from "@/lib/api-client";
+import { useAuth, canDeleteKnowledge } from "@/lib/auth-context";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { KnowledgeItem, KnowledgeStatus } from "@/lib/types";
 
@@ -19,13 +20,32 @@ const STATUS_TABS: Array<{ value: KnowledgeStatus | "all"; label: string }> = [
 ];
 
 export default function KnowledgeListPage() {
+  const { user } = useAuth();
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [status, setStatus] = useState<KnowledgeStatus | "all">("all");
   const [q, setQ] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api.listKnowledge({ status: status === "all" ? undefined : status, q: q || undefined }).then((r) => setItems(r.items));
   }, [status, q]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function onDelete(e: React.MouseEvent, id: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm("この知見を削除します。この操作は取り消せません。よろしいですか？")) return;
+    setError(null);
+    try {
+      await api.deleteKnowledge(id);
+      load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "削除に失敗しました");
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -51,24 +71,36 @@ export default function KnowledgeListPage() {
           </button>
         ))}
       </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
         {items.length === 0 && <p className="px-4 py-6 text-center text-sm text-slate-400">該当する知見がありません。</p>}
-        {items.map((k) => (
-          <Link key={k.id} href={`/knowledge/${k.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-slate-800">{k.title}</p>
-              <p className="mt-0.5 truncate text-xs text-slate-500">{k.issue}</p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {k.workCategory.slice(0, 2).map((c) => (
-                <span key={c} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
-                  {c}
-                </span>
-              ))}
-              <StatusBadge status={k.status} />
-            </div>
-          </Link>
-        ))}
+        {items.map((k) => {
+          const deletable = user ? canDeleteKnowledge(user.role, k.status, k.createdBy === user.id) : false;
+          return (
+            <Link key={k.id} href={`/knowledge/${k.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-800">{k.title}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">{k.issue}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {k.workCategory.slice(0, 2).map((c) => (
+                  <span key={c} className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500">
+                    {c}
+                  </span>
+                ))}
+                <StatusBadge status={k.status} />
+                {deletable && (
+                  <button
+                    onClick={(e) => onDelete(e, k.id)}
+                    className="rounded border border-red-300 px-2 py-0.5 text-[11px] font-semibold text-red-700 hover:bg-red-50"
+                  >
+                    削除
+                  </button>
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

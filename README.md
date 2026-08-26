@@ -18,9 +18,9 @@
 
 **GO**（ローカル環境・Cloudflare Tunnel経由の公開URLの両方で主要ユースケースが実際に動作することを確認済み）
 
-- 情報登録 → AI構造化 → 知見候補生成 → 人レビュー → 承認 → 検索・活用 の一連のフローを実ブラウザ（Playwright、公開URL経由含む）で確認
+- 情報登録 → AI構造化 → 知見候補生成 → 人レビュー → 承認 → 検索・活用 → 削除 の一連のフローを実ブラウザ（Playwright、公開URL経由含む）で確認
 - 8状態（Draft〜Archived）すべてを実データで再現
-- API統合テスト18件・フロントエンド単体テスト2件・E2Eテスト3件すべて green
+- API統合テスト24件・フロントエンド単体テスト2件・E2Eテスト4件すべて green
 - CI（lint / typecheck / test / build / security audit）green、known vulnerabilities: critical/high = 0
 - Docker Compose（`docker compose build`）でのビルドも確認済み
 
@@ -56,9 +56,24 @@
 | FR-11 | 通知 | ⏭️ 未実装（バックログ。レビュー待ち一覧で代替） |
 | FR-12 | 管理（ロール/分類/AI設定等） | ⏭️ 一部未実装（RBACは実装済み、管理画面UIは未実装） |
 
-## 🔒 権限マトリクス（詳細仕様設計書 §13 準拠）
+## 🔒 権限マトリクス（詳細仕様設計書 §13 準拠 + 独自拡張）
 
-`user < contributor < reviewer < approver < admin` の階層で実装（`apps/api/src/lib/rbac.ts`）。承認(Approve)は `approver` のみ、監査ログ・KPI閲覧は `approver` 以上。
+`user < contributor < reviewer < approver < admin` の階層で実装（`apps/api/src/lib/rbac.ts`）。
+
+| 操作 | user | contributor | reviewer | approver | admin |
+|---|---|---|---|---|---|
+| 承認済み知見の閲覧・検索 | ○ | ○ | ○ | ○ | ○ |
+| 新規登録（一次情報登録+AI構造化） | ○ | ○ | ○ | ○ | ○ |
+| 知見候補の編集（内容修正） | － | ○ | ○ | ○ | ○ |
+| 削除（自分が登録した下書き/AI構造化済み/差戻し） | － | ○ | ○ | ○ | ○ |
+| 削除（他者の知見。差戻し・却下含む） | － | － | － | ○ | ○ |
+| レビュー依頼 | － | ○ | ○ | ○ | ○ |
+| 差戻し | － | － | ○ | ○ | ○ |
+| 正式承認・却下 | － | － | － | ○ | ○ |
+| 廃止(archive)・再確認要求 | － | － | － | ○ | ○ |
+| 監査ログ・KPI閲覧 | － | － | － | ○ | ○ |
+
+削除は監査証跡・版管理（詳細仕様設計書§14）を保全するため、**承認済み(approved)・要再確認(revalidation_required)・廃止済み(archived)の知見は削除不可**（廃止(archive)フローを使う）。それ以外のステータスのみ、上表の権限で削除できる。
 
 ## 🚀 クイックスタート
 
@@ -129,7 +144,7 @@ Docker Composeで一括起動する場合: `docker compose up -d --build`（web:
 ## 🧪 テスト
 
 ```bash
-# API: 統合テスト18件（Postgresが起動している必要あり。必須受入シナリオ5件を含む）
+# API: 統合テスト24件（Postgresが起動している必要あり。必須受入シナリオ5件+削除RBAC6件を含む）
 cd apps/api && npm run test
 
 # Web: 単体テスト
@@ -139,8 +154,8 @@ cd apps/web && npm run test
 cd apps/web && npx playwright install chromium && npx playwright test
 ```
 
-E2E仕様(`apps/web/e2e/`)は2ファイル: `knowledge-cycle.spec.ts`（登録→AI構造化→レビュー→承認→検索のゴールデンパス）、
-`open-mode.spec.ts`（`AUTH_MODE=open`時の自動ログイン・ロール切替）。
+E2E仕様(`apps/web/e2e/`)は3ファイル: `knowledge-cycle.spec.ts`（登録→AI構造化→レビュー→承認→検索のゴールデンパス）、
+`open-mode.spec.ts`（`AUTH_MODE=open`時の自動ログイン・ロール切替）、`delete-flow.spec.ts`（削除のRBAC: 本人は削除可・他者は削除不可）。
 
 ## 📁 ダミーデータ構成
 

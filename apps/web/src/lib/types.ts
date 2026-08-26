@@ -49,6 +49,7 @@ export interface KnowledgeItem {
   aiOutput: AiOutput | null;
   approverId: string | null;
   approvedAt: string | null;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }

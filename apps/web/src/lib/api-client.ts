@@ -82,6 +82,7 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+  deleteKnowledge: (id: string) => request<void>(`/api/v1/knowledge/${id}`, { method: "DELETE" }),
   archive: (id: string, reason: string) =>
     request<import("./types").KnowledgeItem>(`/api/v1/knowledge/${id}/archive`, {
       method: "POST",

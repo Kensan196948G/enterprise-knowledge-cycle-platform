@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { api, setToken } from "./api-client";
 import type { AuthUser } from "./types";
 
@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [openMode, setOpenMode] = useState(false);
   const [demoUsers, setDemoUsers] = useState<DemoUser[]>([]);
   const router = useRouter();
+  const pathname = usePathname();
 
   const login = useCallback(async (email: string, password: string) => {
     const { token, user: loggedInUser } = await api.login(email, password);
@@ -62,8 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           setToken(null);
         }
-      } else if (mode.open) {
-        // 認証無効モード: 誰でも即座に閲覧できるよう既定ペルソナで自動ログインする
+      } else if (mode.open && pathname !== "/login") {
+        // 認証無効モード: 誰でも即座に閲覧できるよう既定ペルソナで自動ログインする。
+        // ただし /login では、明示的なログイン操作(手動フォーム・E2E等)と競合しないよう自動ログインしない。
         await login(DEFAULT_OPEN_MODE_EMAIL, "open").catch(() => undefined);
       }
       if (!cancelled) setLoading(false);
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [login]);
 
   const loginAndGoHome = useCallback(
@@ -112,4 +115,4 @@ export function useAuth() {
   return ctx;
 }
 
-export { hasAtLeastRole } from "./rbac";
+export { hasAtLeastRole, canDeleteKnowledge } from "./rbac";

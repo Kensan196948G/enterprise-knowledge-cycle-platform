@@ -12,7 +12,7 @@ import {
   usageEvents,
 } from "../db/schema.js";
 import { authGuard, requireRole } from "../middleware/auth-guard.js";
-import { permissions } from "../lib/rbac.js";
+import { permissions, OWNER_DELETABLE_STATUSES, APPROVER_DELETABLE_STATUSES } from "../lib/rbac.js";
 import { runAiStructuring } from "../lib/ai-structuring.js";
 import { recordAudit } from "../lib/audit.js";
 
@@ -230,6 +230,52 @@ knowledgeRoutes.patch("/:id", requireRole(permissions.editKnowledgeCandidate), a
   });
 
   return c.json(updated);
+});
+
+/**
+ * 知見の削除。承認済み(approved)・要再確認(revalidation_required)・廃止済み
+ * (archived)は監査証跡・版管理を保全するため削除不可(archive/revalidateを使う)。
+ * 自分が登録した知見は contributor 以上、他者の知見は approver 以上が削除できる。
+ */
+knowledgeRoutes.delete("/:id", async (c) => {
+  const user = c.get("user");
+  const id = c.req.param("id") as string;
+
+  const [existing] = await db.select().from(knowledgeItems).where(eq(knowledgeItems.id, id)).limit(1);
+  if (!existing) return c.json({ error: "見つかりません" }, 404);
+
+  const isOwner = existing.createdBy === user.id;
+  const allowedByApprover =
+    permissions.deleteAnyKnowledge(user.role) &&
+    (APPROVER_DELETABLE_STATUSES as readonly string[]).includes(existing.status);
+  const allowedByOwner =
+    isOwner &&
+    permissions.deleteOwnKnowledge(user.role) &&
+    (OWNER_DELETABLE_STATUSES as readonly string[]).includes(existing.status);
+
+  if (!allowedByApprover && !allowedByOwner) {
+    if (["approved", "revalidation_required", "archived"].includes(existing.status)) {
+      return c.json(
+        { error: "承認済み・要再確認・廃止済みの知見は削除できません。廃止(archive)を使用してください。" },
+        409,
+      );
+    }
+    return c.json({ error: "削除権限がありません" }, 403);
+  }
+
+  await db.delete(knowledgeItems).where(eq(knowledgeItems.id, id));
+
+  await recordAudit({
+    actorId: user.id,
+    role: user.role,
+    action: "DELETE",
+    objectType: "knowledge_item",
+    objectId: id,
+    beforeVersion: existing.version,
+    reason: `status=${existing.status} owner=${isOwner}`,
+  });
+
+  return c.body(null, 204);
 });
 
 /** §9 類似知見: 同一work_categoryを共有する承認済み知見を簡易類似検索する */

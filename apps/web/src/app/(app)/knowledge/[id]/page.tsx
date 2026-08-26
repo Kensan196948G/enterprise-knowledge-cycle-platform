@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
-import { useAuth, hasAtLeastRole } from "@/lib/auth-context";
+import { useAuth, hasAtLeastRole, canDeleteKnowledge } from "@/lib/auth-context";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { KnowledgeDetail, KnowledgeItem } from "@/lib/types";
 
 export default function KnowledgeDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const { user } = useAuth();
   const [item, setItem] = useState<KnowledgeDetail | null>(null);
   const [similar, setSimilar] = useState<KnowledgeItem[]>([]);
@@ -102,6 +103,20 @@ export default function KnowledgeDetailPage() {
   const canReview = hasAtLeastRole(user.role, "reviewer") && item.status === "review_pending" && !!pendingReview;
   const canApprove = (user.role === "approver" || user.role === "admin") && item.status === "review_pending" && !!pendingReview;
   const canArchiveOrRevalidate = hasAtLeastRole(user.role, "approver") && item.status === "approved";
+  const canDelete = canDeleteKnowledge(user.role, item.status, item.createdBy === user.id);
+
+  async function onDelete() {
+    if (!window.confirm("この知見を削除します。この操作は取り消せません。よろしいですか？")) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      await api.deleteKnowledge(item!.id);
+      router.push("/knowledge");
+    } catch (err) {
+      setMessage(err instanceof ApiError ? err.message : "削除に失敗しました");
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -204,6 +219,15 @@ export default function KnowledgeDetailPage() {
           </>
         )}
         {canEdit && <EditToggle item={item} onSaved={load} />}
+        {canDelete && (
+          <button
+            disabled={busy}
+            onClick={onDelete}
+            className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            削除
+          </button>
+        )}
       </section>
 
       {item.reviews.length > 0 && (

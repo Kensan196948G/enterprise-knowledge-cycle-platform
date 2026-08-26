@@ -17,6 +17,7 @@ export interface AuditEntryInput {
     | "REJECT"
     | "ARCHIVE"
     | "REVALIDATE"
+    | "DELETE"
     | "PERMISSION_CHANGE"
     | "CONFIG_CHANGE";
   objectType: string;
