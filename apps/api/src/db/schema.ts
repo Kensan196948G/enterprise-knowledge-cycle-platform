@@ -197,6 +197,20 @@ export const aiExecutions = pgTable("ai_executions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * SystemSettings: システム設定(単一行のシングルトン)。id=1固定。
+ * 滞留アラートしきい値・MVPバナー表示・AIモデル選択など、管理者が変更できる
+ * 非機密の運用設定を保持する。秘密情報(APIキー等)はここに保存しない。
+ */
+export const systemSettings = pgTable("system_settings", {
+  id: integer("id").primaryKey().default(1),
+  stagnationAlertDays: integer("stagnation_alert_days").notNull().default(3),
+  showDemoBanner: boolean("show_demo_banner").notNull().default(true),
+  aiModel: varchar("ai_model", { length: 120 }).notNull().default("claude-sonnet-5"),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** AuditLog (詳細仕様設計書 §14 監査ログ項目) — 追記型・原則不変 */
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
