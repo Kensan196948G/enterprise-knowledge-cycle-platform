@@ -1,182 +1,111 @@
-# 📌 社内ナレッジ循環基盤 (Enterprise Knowledge Cycle Platform) — MVP
+# 📌 社内ナレッジ循環基盤（Enterprise Knowledge Cycle Platform）
 
-> 人 × AIで知見を標準化する循環型ナレッジ基盤。
-> 現場の経験・トラブル・工夫を、AIが構造化し、人がレビュー・承認して「会社の標準知」へ昇格させる。
+> 現場で起きた経験・トラブル・工夫を、AIが整理し、専門知識を持つ人が確認・承認して
+> 「会社の正式な知恵」に育て、誰もが検索して再利用できるようにする仕組みです。
 
-このリポジトリは [`docs/planning/`](./docs/planning) の企画書・要件定義書・詳細仕様設計書を上位文書として実装した MVP／PoC です。**本番運用は対象外**（MVP・検証環境での動作実証が目的）。
+このページは、エンジニアでなくても内容が分かるように書いています。技術的な詳細は [docs/TECHNICAL.md](./docs/TECHNICAL.md) にまとめています。
 
-## 🌐 公開URL（MVP・検証環境）
+---
 
-**https://ekcp-mvp.mirai-dx-platform.com**
+## 🎯 何のためのものか
 
-- Cloudflare Tunnel（`ekcp-mvp-cloudflared.service`、config: `~/.cloudflared/ekcp-mvp-config.yml`）経由でローカルの `apps/web`（port 3210）を公開
-- APIは Next.js の `rewrites`（`next.config.js`）で `/api/*` を同一オリジンから内部プロキシしているため、**公開サブドメインは `ekcp-mvp` の1つのみ**（`api.` 等の追加サブドメインは不要）
-- **`AUTH_MODE=open` でログイン認証を無効化しており、誰でもログイン不要で閲覧・操作できる**。画面上部のセレクタでパスワード入力なしにロール（一般利用者/登録者/レビュー担当/承認権限者/管理者）を切り替えて体験可能
-- ⚠️ `AUTH_MODE=open` は本MVP検証環境専用のフラグ。本番相当の環境・実データを扱う環境では絶対に設定しないこと（既定値は `secure` = fail-closed）
+会社には、日々の仕事の中で生まれる貴重な経験や工夫がたくさんあります。しかし多くの場合、それは次のような形で失われています。
 
-## 📊 MVP判定
+- 特定のベテラン社員に質問が集中し、その人の負担が大きい
+- 過去の似た事例を探すのに時間がかかる、あるいは見つからない
+- 同じ失敗や同じ検討が、部署や現場を変えて繰り返される
+- 経験やノウハウが個人のメモや記憶にとどまり、会社の資産にならない
 
-**GO**（ローカル環境・Cloudflare Tunnel経由の公開URLの両方で主要ユースケースが実際に動作することを確認済み）
+本システムは、この課題を「AIと人の分担」で解決します。
 
-- 情報登録 → AI構造化 → 知見候補生成 → 人レビュー → 承認 → 検索・活用 → 削除 の一連のフローを実ブラウザ（Playwright、公開URL経由含む）で確認
-- 8状態（Draft〜Archived）すべてを実データで再現
-- API統合テスト24件・フロントエンド単体テスト2件・E2Eテスト4件すべて green
-- CI（lint / typecheck / test / build / security audit）green、known vulnerabilities: critical/high = 0
-- Docker Compose（`docker compose build`）でのビルドも確認済み
+| 誰が | 何をするか |
+|---|---|
+| 🧑‍🔧 現場の担当者 | 気づいたこと・トラブル・工夫を、思ったまま登録するだけ |
+| 🤖 AI | 登録された文章を自動で読み取り、「課題・原因・対応・結果・適用条件」などに整理し、下書きを作る |
+| 🧑‍💼 専門知識を持つ人 | AIが作った下書きを確認し、内容が正しいか・使ってよい条件は何かをチェックする |
+| ✅ 承認権限を持つ人 | 最終的に「会社の正式な知見」として認めるかどうかを判断する |
+| 🔍 誰でも | 正式に認められた知見を検索し、根拠となった資料つきで再利用できる |
 
-## 🗺️ 全体アーキテクチャ
+**重要な原則:** AIが作るのはあくまで「たたき台（参考案）」です。会社の正式な知見として使えるのは、必ず人が確認・承認したものだけです。この境界は画面上でも常に色分けして分かるようにしています。
+
+---
+
+## 🖱️ 実際に触ってみる
+
+ログインは不要です。下記のURLを開くだけで、すぐに動く状態を体験できます（サンプルデータのみで動いており、実在の会社・個人の情報は一切含まれません）。
+
+### **https://ekcp-mvp.mirai-dx-platform.com**
+
+1. リンクを開くと、自動的に「一般利用者」として画面が開きます
+2. 画面右上のプルダウンから、パスワード入力なしで役割（一般利用者／登録者／レビュー担当／承認権限者／管理者）を切り替えられます
+3. 「情報登録」から文章を入力してみると、AIが自動で内容を整理する様子を確認できます
+4. 「検索」で、過去の登録内容を検索できます（承認済みのものと、まだ確認中のものは色分けして区別されます）
+
+---
+
+## 📊 今の完成度（技術管理者向け）
+
+**現在の位置づけ: 試作品（MVP・PoC）です。本番の会社システムとしての稼働は想定していません。**
+
+| 観点 | 状態 |
+|---|---|
+| 主要な使い方（登録→AI整理→確認→承認→検索→削除）が一通り動くか | ✅ 実際のブラウザ操作で確認済み |
+| 誰が何をしてよいかの権限管理（登録・編集・削除・承認など） | ✅ 役割ごとに実装・テスト済み |
+| 自動テストによる品質確認 | ✅ 30件のテストが継続的に成功していることを確認 |
+| セキュリティ上の既知の重大な弱点 | ✅ 現時点で重大・高リスクな指摘はゼロ |
+| 実際の会社データでの利用 | ❌ 未対応。現時点はすべてサンプル（架空）データ |
+| 社外システム（Slack・文書管理など）との自動連携 | ❌ 未対応。手入力での登録のみ |
+| 本番環境としての稼働・正式なアカウント管理 | ❌ 未対応（今回はあえて「誰でも見られる」検証用の特別な設定にしています） |
+
+品質・セキュリティ・実装範囲などの詳細な技術根拠は [docs/TECHNICAL.md](./docs/TECHNICAL.md) を参照してください。
+
+---
+
+## 💼 経営判断のための材料（役員向け）
+
+### 見込まれる効果
+
+- ベテラン社員への問い合わせ集中を緩和する
+- 過去の類似事例を探す時間を削減する
+- 同じ失敗・同じ検討の繰り返しを減らす
+- 技術レビューの質を底上げする
+- 若手の教育を効率化する
+- 社内標準・マニュアルの更新サイクルを短縮する
+
+### 今回の位置づけ
+
+企画書に定義された導入ロードマップの **「Phase 1: PoC（試験導入）」の一歩手前** にあたります。今回作成したのは、実際に操作して評価できる試作品（MVP）であり、まだ特定部署・特定テーマでの試験導入（PoC）そのものではありません。
 
 ```text
-┌─────────────┐      ┌──────────────────────────┐      ┌──────────────┐
-│  apps/web    │ REST │       apps/api            │      │  PostgreSQL  │
-│  Next.js 15  │◄────►│  Hono (Node) + Drizzle ORM │◄────►│  (Docker /   │
-│  React 19    │      │  JWT認証 / RBAC            │      │   Neon)      │
-└─────────────┘      │  ルールベース or Claude API  │      └──────────────┘
-                      │  によるAI構造化エンジン      │
-                      └──────────────────────────┘
+今回ここまで完成 → Phase 1: PoC（対象テーマ・部署を決めて試験導入）
+                 → Phase 2: 技術部門への展開
+                 → Phase 3: 社内標準・マニュアルとの連携
+                 → Phase 4: 全社展開
 ```
 
-情報源(Source) → AI構造化(KnowledgeCandidate, status=ai_processed) → レビュー依頼(ReviewCase)
-→ 承認(status=approved) / 差戻し(returned) / 却下(rejected) → 検索・再利用 → 再確認(revalidation_required) / 廃止(archived)
+### 次に決めるべきこと（投資判断の前に）
 
-## ✅ 機能要件カバレッジ（要件定義書 §6 準拠）
+- どのテーマ・どの部署でPoCを始めるか（例: 設計照査、仮設計画、品質不具合と再発防止、現場改善、技術Q&A、若手教育 など）
+- PoCの責任者・レビュー担当者を誰にするか
+- 実際の社内データをどこまで、どの権限で使わせるか（機密情報の扱いを含む）
+- 効果をどう測るか（登録数、検索時間の短縮、レビュー品質、再利用率 など）
+- 本番導入する場合の投資規模（実データ用のシステム基盤、正式なアカウント管理、社外システムとの連携 など）
 
-| ID | 機能 | 実装状況 |
-|---|---|---|
-| FR-01 | 情報登録 | ✅ 実装済み（`POST /api/v1/sources`, 画面: 情報登録） |
-| FR-02 | 情報統合 | ✅ 実装済み（複数sourceIdsを1知見候補へ統合可能） |
-| FR-03 | AI構造化 | ✅ 実装済み（ルールベース抽出 + Claude API 任意切替） |
-| FR-04 | 知見候補生成 | ✅ 実装済み（facts/inferences/unknowns/conflicts分離出力） |
-| FR-05 | AIレビュー支援 | ✅ 実装済み（矛盾・不足・review_questions提示） |
-| FR-06 | 人レビュー | ✅ 実装済み（承認・却下・差戻し・エスカレーション） |
-| FR-07 | 正式知見管理 | ✅ 実装済み（status=approvedのみ検索で優先露出） |
-| FR-08 | 自然言語検索 | ✅ 実装済み（承認済み優先 + 参考情報の明示区別） |
-| FR-09 | 標準改訂支援 | ⏭️ Phase 2（要件定義書どおりPoC対象外） |
-| FR-10 | 効果分析 | ✅ 実装済み（KPI画面、実データから計測） |
-| FR-11 | 通知 | ⏭️ 未実装（バックログ。レビュー待ち一覧で代替） |
-| FR-12 | 管理（ロール/分類/AI設定等） | ⏭️ 一部未実装（RBACは実装済み、管理画面UIは未実装） |
+---
 
-## 🔒 権限マトリクス（詳細仕様設計書 §13 準拠 + 独自拡張）
+## ⚠️ 知っておくべき制約
 
-`user < contributor < reviewer < approver < admin` の階層で実装（`apps/api/src/lib/rbac.ts`）。
+- **今の公開URLは「誰でも触って評価できるようにするため」の特別な検証用設定です。** ログイン確認を行わない設定にしており、実際の会社データや個人情報は一切扱っていません。本番導入時は通常のログイン・権限管理に戻します。
+- 表示されているデータはすべて架空のサンプルです（会社名・人物名・案件名を含む）。いつでも操作・削除して問題ありません。
+- 検索は簡易なキーワード一致による検索です。より高度なAI検索（自然文の意図を汲んだ検索）は今後の検討課題です。
+- Slackや社内文書システムなどとの自動連携は未対応で、現時点は手入力での登録のみです。
+- 社内標準・マニュアルの改訂候補をAIが自動生成する機能は、企画段階から意図的に次フェーズ（Phase 2以降）に先送りしています。
 
-| 操作 | user | contributor | reviewer | approver | admin |
-|---|---|---|---|---|---|
-| 承認済み知見の閲覧・検索 | ○ | ○ | ○ | ○ | ○ |
-| 新規登録（一次情報登録+AI構造化） | ○ | ○ | ○ | ○ | ○ |
-| 知見候補の編集（内容修正） | － | ○ | ○ | ○ | ○ |
-| 削除（自分が登録した下書き/AI構造化済み/差戻し） | － | ○ | ○ | ○ | ○ |
-| 削除（他者の知見。差戻し・却下含む） | － | － | － | ○ | ○ |
-| レビュー依頼 | － | ○ | ○ | ○ | ○ |
-| 差戻し | － | － | ○ | ○ | ○ |
-| 正式承認・却下 | － | － | － | ○ | ○ |
-| 廃止(archive)・再確認要求 | － | － | － | ○ | ○ |
-| 監査ログ・KPI閲覧 | － | － | － | ○ | ○ |
-
-削除は監査証跡・版管理（詳細仕様設計書§14）を保全するため、**承認済み(approved)・要再確認(revalidation_required)・廃止済み(archived)の知見は削除不可**（廃止(archive)フローを使う）。それ以外のステータスのみ、上表の権限で削除できる。
-
-## 🚀 クイックスタート
-
-```bash
-cp .env.example .env
-
-# 1. PostgreSQL起動
-docker compose up -d postgres
-
-# 2. API: migration生成・適用・ダミーデータ投入
-cd apps/api
-npm install
-npm run db:generate   # 初回のみ（既にmigrationsがあれば不要）
-npm run db:migrate
-npm run db:seed        # 架空データ投入。ログイン情報はコンソール出力を参照
-npm run dev             # http://localhost:8210
-
-# 3. Web（別ターミナル）
-cd apps/web
-npm install
-npm run dev             # http://localhost:3210
-```
-
-## 🌐 デプロイ手順（MVP・検証環境 = Cloudflare Tunnel）
-
-このポートフォリオの他プロジェクトと同じ規約（`~/.cloudflared/<slug>-config.yml` + systemd）に従う。
-
-```bash
-# 1. Cloudflare API TokenでTunnelを作成し、~/.cloudflared/<tunnel-id>.json を生成
-#    （cert.pemによるブラウザログイン不要。cfd_tunnel API を直接叩く）
-
-# 2. ~/.cloudflared/ekcp-mvp-config.yml
-tunnel: <tunnel-id>
-credentials-file: /home/kensan/.cloudflared/<tunnel-id>.json
-ingress:
-  - hostname: ekcp-mvp.mirai-dx-platform.com
-    service: http://127.0.0.1:3210
-  - service: http_status:404
-
-# 3. DNS CNAME: ekcp-mvp.mirai-dx-platform.com -> <tunnel-id>.cfargotunnel.com (proxied)
-
-# 4. systemd (/etc/systemd/system/ekcp-mvp-cloudflared.service) で常駐化
-sudo systemctl enable --now ekcp-mvp-cloudflared.service
-
-# 5. アプリ本体はサブドメイン1つで完結させるため、Next.jsのrewritesでAPIを
-#    同一オリジンにプロキシする(next.config.js の API_PROXY_TARGET)。
-#    AUTH_MODE=open を指定して「誰でも閲覧できる」検証環境として起動する。
-cd apps/api && AUTH_MODE=open PORT=8210 npm run dev &
-cd apps/web && API_PROXY_TARGET=http://127.0.0.1:8210 npm run dev &
-```
-
-`ekcp`（本番環境用サブドメイン）は要件定義書どおり未取得・未使用。本番展開時に別途検討する。
-
-Docker Composeで一括起動する場合: `docker compose up -d --build`（web: 3210 / api: 8210 / postgres: 15544）。
-
-## 👤 デモアカウント（パスワード共通: `Ekcp#2026Demo`）
-
-| ロール | メールアドレス |
-|---|---|
-| 一般利用者 | tanaka.taichi@example-ekcp.test |
-| 登録者(Contributor) | sato.hanako@example-ekcp.test / ito.makoto@example-ekcp.test |
-| レビュー担当(Reviewer) | suzuki.ichiro@example-ekcp.test / watanabe.kumi@example-ekcp.test |
-| 承認権限者(Approver) | takahashi.naoko@example-ekcp.test |
-| システム管理者(Admin) | yamamoto.kenji@example-ekcp.test |
-
-人物名・会社名・案件名はすべて架空です。実在の組織・個人とは一切関係ありません。
-
-## 🧪 テスト
-
-```bash
-# API: 統合テスト24件（Postgresが起動している必要あり。必須受入シナリオ5件+削除RBAC6件を含む）
-cd apps/api && npm run test
-
-# Web: 単体テスト
-cd apps/web && npm run test
-
-# Web: E2E（実ブラウザ、Playwright。api/webが起動している必要あり）
-cd apps/web && npx playwright install chromium && npx playwright test
-```
-
-E2E仕様(`apps/web/e2e/`)は3ファイル: `knowledge-cycle.spec.ts`（登録→AI構造化→レビュー→承認→検索のゴールデンパス）、
-`open-mode.spec.ts`（`AUTH_MODE=open`時の自動ログイン・ロール切替）、`delete-flow.spec.ts`（削除のRBAC: 本人は削除可・他者は削除不可）。
-
-## 📁 ダミーデータ構成
-
-`apps/api/scripts/seed.ts` が以下を投入する（すべて架空）:
-
-- ユーザー7名（5ロール）
-- 一次情報(Source) 8件（設計照査・仮設計画・品質不具合・安全・設備・技術問い合わせ・教育Q&Aの各テーマ）
-- 知見(KnowledgeItem) 10件、状態は draft / ai_processed / review_pending / returned / approved×3 / rejected / revalidation_required / archived を網羅
-- レビュー履歴・根拠資料リンク・AI実行記録・監査ログ・利用実績(閲覧/検索ヒット/再利用) も連動して投入
-
-## ⚠️ 既知の制約・バックログ
-
-- FR-09（標準改訂支援）・FR-11（通知）・管理画面(UI-10) は要件定義書どおりPoC後の対象としスコープ外
-- 検索は全文一致(ILIKE)＋属性検索のみ。ベクトル検索/RAGは詳細仕様設計書のTBD技術選定に依存するため未実装
-- 外部情報源連携（Slack/CDE/BIM等）は未接続。手動登録のみ（要件定義書の連携要件はPoC後段階）
-- AI構造化はデフォルトでルールベース抽出（秘密情報なしで動作）。`ANTHROPIC_API_KEY` を設定すると実LLM(Claude)経路に自動切替
-- 本番デプロイ（`ekcp` サブドメイン、Neon等の本番DB）は今回のタスク範囲外。現状はMVP検証環境（`ekcp-mvp`）のみ
-- ⚠️ `apps/api/tests/` は `beforeAll` でDBを`truncate`する。ローカルで `npm run test` を実行するとseedしたデモデータが消えるため、実行後は `npm run db:seed` で再投入すること（CIは毎回まっさらなPostgresコンテナを使うため影響なし）
+---
 
 ## 📄 関連文書
 
-- [企画書](./docs/planning/社内ナレッジ循環基盤企画書.html)
-- [要件定義書](./docs/planning/社内ナレッジ循環基盤%20要件定義書.html)
-- [詳細仕様設計書](./docs/planning/社内ナレッジ循環基盤%20詳細仕様設計書.html)
+- [企画書](./docs/planning/社内ナレッジ循環基盤企画書.html) — なぜ作るのか、どう運用するのかの全体構想
+- [要件定義書](./docs/planning/社内ナレッジ循環基盤%20要件定義書.html) — 満たすべき要件の詳細
+- [詳細仕様設計書](./docs/planning/社内ナレッジ循環基盤%20詳細仕様設計書.html) — システムの詳細設計
+- [docs/TECHNICAL.md](./docs/TECHNICAL.md) — エンジニア向け技術資料（構成、セットアップ手順、テスト結果など）
