@@ -63,7 +63,10 @@ export default function LoginPage() {
   }
 
   if (openMode) {
-    const users = demoUsers.length > 0 ? demoUsers : DEMO_ACCOUNTS.map((a) => ({ email: a.email, name: a.role, role: "", department: null }));
+    const users =
+      demoUsers.length > 0
+        ? demoUsers.map((d) => ({ email: d.email, name: d.name, department: d.department, roleLabel: ROLE_LABEL[d.role] ?? d.role }))
+        : DEMO_ACCOUNTS.map((a) => ({ email: a.email, name: a.email, department: null, roleLabel: a.role }));
     return (
       <div className="flex min-h-screen items-center justify-center bg-appBg p-6">
         <div className="w-full max-w-[440px] rounded-2xl border border-borderc bg-white p-[30px] shadow-[0_10px_40px_rgba(16,24,40,.10)]">
@@ -84,11 +87,10 @@ export default function LoginPage() {
                   {u.name[0]}
                 </span>
                 <span className="flex-1 leading-tight">
-                  <span className="block text-[13px] font-semibold text-ink">
-                    {ROLE_LABEL[u.role] ?? u.role ?? DEMO_ACCOUNTS.find((a) => a.email === u.email)?.role}
-                  </span>
+                  <span className="block text-[13px] font-semibold text-ink">{u.roleLabel}</span>
                   <span className="block text-[11px] text-muted">
-                    {u.name} · {u.department ?? "―"}
+                    {u.name}
+                    {u.department ? ` · ${u.department}` : ""}
                   </span>
                 </span>
                 <span className="shrink-0 text-xs font-semibold text-accent">

@@ -192,6 +192,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               value={topQ}
               onChange={(e) => setTopQ(e.target.value)}
               placeholder="知見を検索"
+              aria-label="知見を検索"
               className="w-40 border-none bg-transparent text-[12.5px] text-ink outline-none placeholder:text-muted"
             />
           </form>

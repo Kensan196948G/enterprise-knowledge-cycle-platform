@@ -72,6 +72,7 @@ export default function KnowledgeListPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="タイトル・課題で絞り込み"
+          aria-label="タイトル・課題で絞り込み"
           className="w-[230px] rounded-lg border border-borderc px-2.5 py-2 text-[12.5px] outline-none focus:border-accent"
         />
       </div>

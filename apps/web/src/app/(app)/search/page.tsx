@@ -95,6 +95,7 @@ function SearchInner() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="例: 港湾工事でコンクリート打設時に発生した不具合と対策を教えて"
+            aria-label="知見を検索"
             className="flex-1 rounded-[9px] border border-borderc px-3.5 py-2.5 text-[13.5px] outline-none focus:border-accent"
           />
           <button className="rounded-[9px] bg-accent px-6 text-[13.5px] font-semibold text-white hover:bg-accentHover">検索</button>
@@ -104,6 +105,7 @@ function SearchInner() {
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
+              type="button"
               onClick={() => {
                 setQuery(s);
                 runSearch(s);
