@@ -82,21 +82,22 @@ export default function KnowledgeListPage() {
         {items.map((k) => {
           const deletable = user ? canDeleteKnowledge(user.role, k.status, k.createdBy === user.id) : false;
           return (
-            <Link
+            <div
               key={k.id}
-              href={`/knowledge/${k.id}`}
               className="flex items-center gap-3.5 border-b border-panel px-[18px] py-3 last:border-b-0 hover:bg-[#FAFBFC]"
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-ink">{k.title}</p>
-                <p className="mt-0.5 truncate text-[11.5px] text-muted">{k.issue}</p>
-              </div>
-              {k.workCategory.length > 0 && (
-                <span className="shrink-0 rounded-[5px] bg-panel px-1.5 py-0.5 font-mono text-[11px] text-subtle">
-                  {k.workCategory.join(" · ")}
-                </span>
-              )}
-              <StatusBadge status={k.status} />
+              <Link href={`/knowledge/${k.id}`} className="flex min-w-0 flex-1 items-center gap-3.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-ink">{k.title}</p>
+                  <p className="mt-0.5 truncate text-[11.5px] text-muted">{k.issue}</p>
+                </div>
+                {k.workCategory.length > 0 && (
+                  <span className="shrink-0 rounded-[5px] bg-panel px-1.5 py-0.5 font-mono text-[11px] text-subtle">
+                    {k.workCategory.join(" · ")}
+                  </span>
+                )}
+                <StatusBadge status={k.status} />
+              </Link>
               {deletable && (
                 <button
                   onClick={(e) => onDelete(e, k.id)}
@@ -105,7 +106,7 @@ export default function KnowledgeListPage() {
                   削除
                 </button>
               )}
-            </Link>
+            </div>
           );
         })}
       </div>
