@@ -5,44 +5,90 @@ import { useRouter } from "next/navigation";
 import { api, setToken } from "./api-client";
 import type { AuthUser } from "./types";
 
+interface DemoUser {
+  email: string;
+  name: string;
+  role: string;
+  department: string | null;
+}
+
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
+  openMode: boolean;
+  demoUsers: DemoUser[];
   login: (email: string, password: string) => Promise<void>;
+  switchRole: (email: string) => Promise<void>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** MVP検証環境の既定ペルソナ。open mode時、未ログイン訪問者は自動でこのロールとして閲覧開始する */
+const DEFAULT_OPEN_MODE_EMAIL = "tanaka.taichi@example-ekcp.test";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openMode, setOpenMode] = useState(false);
+  const [demoUsers, setDemoUsers] = useState<DemoUser[]>([]);
   const router = useRouter();
 
-  useEffect(() => {
-    const token = typeof window !== "undefined" ? window.localStorage.getItem("ekcp_token") : null;
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    api
-      .me()
-      .then((u) => setUser(u))
-      .catch(() => {
-        setToken(null);
-        setUser(null);
-      })
-      .finally(() => setLoading(false));
+  const login = useCallback(async (email: string, password: string) => {
+    const { token, user: loggedInUser } = await api.login(email, password);
+    setToken(token);
+    setUser(loggedInUser);
   }, []);
 
-  const login = useCallback(
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      const mode = await api.authMode().catch(() => ({ open: false }));
+      if (cancelled) return;
+      setOpenMode(mode.open);
+      if (mode.open) {
+        api
+          .demoUsers()
+          .then((r) => !cancelled && setDemoUsers(r.items))
+          .catch(() => undefined);
+      }
+
+      const token = typeof window !== "undefined" ? window.localStorage.getItem("ekcp_token") : null;
+      if (token) {
+        try {
+          const me = await api.me();
+          if (!cancelled) setUser(me);
+        } catch {
+          setToken(null);
+        }
+      } else if (mode.open) {
+        // 認証無効モード: 誰でも即座に閲覧できるよう既定ペルソナで自動ログインする
+        await login(DEFAULT_OPEN_MODE_EMAIL, "open").catch(() => undefined);
+      }
+      if (!cancelled) setLoading(false);
+    }
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, [login]);
+
+  const loginAndGoHome = useCallback(
     async (email: string, password: string) => {
-      const { token, user: loggedInUser } = await api.login(email, password);
-      setToken(token);
-      setUser(loggedInUser);
+      await login(email, password);
       router.push("/");
     },
-    [router],
+    [login, router],
+  );
+
+  const switchRole = useCallback(
+    async (email: string) => {
+      await login(email, "open");
+      router.refresh();
+    },
+    [login, router],
   );
 
   const logout = useCallback(() => {
@@ -51,7 +97,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }, [router]);
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ user, loading, openMode, demoUsers, login: loginAndGoHome, switchRole, logout }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

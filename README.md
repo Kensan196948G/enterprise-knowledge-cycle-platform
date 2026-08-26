@@ -3,16 +3,26 @@
 > 人 × AIで知見を標準化する循環型ナレッジ基盤。
 > 現場の経験・トラブル・工夫を、AIが構造化し、人がレビュー・承認して「会社の標準知」へ昇格させる。
 
-このリポジトリは [`docs/planning/`](./docs/planning) の企画書・要件定義書・詳細仕様設計書を上位文書として実装した MVP／PoC です。**本番運用は対象外**（ローカル／Preview環境での動作実証が目的）。
+このリポジトリは [`docs/planning/`](./docs/planning) の企画書・要件定義書・詳細仕様設計書を上位文書として実装した MVP／PoC です。**本番運用は対象外**（MVP・検証環境での動作実証が目的）。
+
+## 🌐 公開URL（MVP・検証環境）
+
+**https://ekcp-mvp.mirai-dx-platform.com**
+
+- Cloudflare Tunnel（`ekcp-mvp-cloudflared.service`、config: `~/.cloudflared/ekcp-mvp-config.yml`）経由でローカルの `apps/web`（port 3210）を公開
+- APIは Next.js の `rewrites`（`next.config.js`）で `/api/*` を同一オリジンから内部プロキシしているため、**公開サブドメインは `ekcp-mvp` の1つのみ**（`api.` 等の追加サブドメインは不要）
+- **`AUTH_MODE=open` でログイン認証を無効化しており、誰でもログイン不要で閲覧・操作できる**。画面上部のセレクタでパスワード入力なしにロール（一般利用者/登録者/レビュー担当/承認権限者/管理者）を切り替えて体験可能
+- ⚠️ `AUTH_MODE=open` は本MVP検証環境専用のフラグ。本番相当の環境・実データを扱う環境では絶対に設定しないこと（既定値は `secure` = fail-closed）
 
 ## 📊 MVP判定
 
-**GO**（ローカル環境で主要ユースケースが実際に動作することを確認済み）
+**GO**（ローカル環境・Cloudflare Tunnel経由の公開URLの両方で主要ユースケースが実際に動作することを確認済み）
 
-- 情報登録 → AI構造化 → 知見候補生成 → 人レビュー → 承認 → 検索・活用 の一連のフローを実ブラウザ（Playwright）で確認
+- 情報登録 → AI構造化 → 知見候補生成 → 人レビュー → 承認 → 検索・活用 の一連のフローを実ブラウザ（Playwright、公開URL経由含む）で確認
 - 8状態（Draft〜Archived）すべてを実データで再現
-- API統合テスト16件・フロントエンド単体テスト2件・E2Eテスト1件すべて green
+- API統合テスト18件・フロントエンド単体テスト2件・E2Eテスト3件すべて green
 - CI（lint / typecheck / test / build / security audit）green、known vulnerabilities: critical/high = 0
+- Docker Compose（`docker compose build`）でのビルドも確認済み
 
 ## 🗺️ 全体アーキテクチャ
 
@@ -72,6 +82,36 @@ npm install
 npm run dev             # http://localhost:3210
 ```
 
+## 🌐 デプロイ手順（MVP・検証環境 = Cloudflare Tunnel）
+
+このポートフォリオの他プロジェクトと同じ規約（`~/.cloudflared/<slug>-config.yml` + systemd）に従う。
+
+```bash
+# 1. Cloudflare API TokenでTunnelを作成し、~/.cloudflared/<tunnel-id>.json を生成
+#    （cert.pemによるブラウザログイン不要。cfd_tunnel API を直接叩く）
+
+# 2. ~/.cloudflared/ekcp-mvp-config.yml
+tunnel: <tunnel-id>
+credentials-file: /home/kensan/.cloudflared/<tunnel-id>.json
+ingress:
+  - hostname: ekcp-mvp.mirai-dx-platform.com
+    service: http://127.0.0.1:3210
+  - service: http_status:404
+
+# 3. DNS CNAME: ekcp-mvp.mirai-dx-platform.com -> <tunnel-id>.cfargotunnel.com (proxied)
+
+# 4. systemd (/etc/systemd/system/ekcp-mvp-cloudflared.service) で常駐化
+sudo systemctl enable --now ekcp-mvp-cloudflared.service
+
+# 5. アプリ本体はサブドメイン1つで完結させるため、Next.jsのrewritesでAPIを
+#    同一オリジンにプロキシする(next.config.js の API_PROXY_TARGET)。
+#    AUTH_MODE=open を指定して「誰でも閲覧できる」検証環境として起動する。
+cd apps/api && AUTH_MODE=open PORT=8210 npm run dev &
+cd apps/web && API_PROXY_TARGET=http://127.0.0.1:8210 npm run dev &
+```
+
+`ekcp`（本番環境用サブドメイン）は要件定義書どおり未取得・未使用。本番展開時に別途検討する。
+
 Docker Composeで一括起動する場合: `docker compose up -d --build`（web: 3210 / api: 8210 / postgres: 15544）。
 
 ## 👤 デモアカウント（パスワード共通: `Ekcp#2026Demo`）
@@ -89,7 +129,7 @@ Docker Composeで一括起動する場合: `docker compose up -d --build`（web:
 ## 🧪 テスト
 
 ```bash
-# API: 統合テスト16件（Postgresが起動している必要あり。必須受入シナリオ5件を含む）
+# API: 統合テスト18件（Postgresが起動している必要あり。必須受入シナリオ5件を含む）
 cd apps/api && npm run test
 
 # Web: 単体テスト
@@ -98,6 +138,9 @@ cd apps/web && npm run test
 # Web: E2E（実ブラウザ、Playwright。api/webが起動している必要あり）
 cd apps/web && npx playwright install chromium && npx playwright test
 ```
+
+E2E仕様(`apps/web/e2e/`)は2ファイル: `knowledge-cycle.spec.ts`（登録→AI構造化→レビュー→承認→検索のゴールデンパス）、
+`open-mode.spec.ts`（`AUTH_MODE=open`時の自動ログイン・ロール切替）。
 
 ## 📁 ダミーデータ構成
 
@@ -114,7 +157,8 @@ cd apps/web && npx playwright install chromium && npx playwright test
 - 検索は全文一致(ILIKE)＋属性検索のみ。ベクトル検索/RAGは詳細仕様設計書のTBD技術選定に依存するため未実装
 - 外部情報源連携（Slack/CDE/BIM等）は未接続。手動登録のみ（要件定義書の連携要件はPoC後段階）
 - AI構造化はデフォルトでルールベース抽出（秘密情報なしで動作）。`ANTHROPIC_API_KEY` を設定すると実LLM(Claude)経路に自動切替
-- 本番デプロイ・Neon/Cloudflareへの実配置は未実施（今回のタスク範囲外）
+- 本番デプロイ（`ekcp` サブドメイン、Neon等の本番DB）は今回のタスク範囲外。現状はMVP検証環境（`ekcp-mvp`）のみ
+- ⚠️ `apps/api/tests/` は `beforeAll` でDBを`truncate`する。ローカルで `npm run test` を実行するとseedしたデモデータが消えるため、実行後は `npm run db:seed` で再投入すること（CIは毎回まっさらなPostgresコンテナを使うため影響なし）
 
 ## 📄 関連文書
 

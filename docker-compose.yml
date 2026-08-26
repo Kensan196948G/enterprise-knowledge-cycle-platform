@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-ekcp}:${POSTGRES_PASSWORD:-ekcp}@postgres:5432/${POSTGRES_DB:-ekcp}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-real-environments}
       CORS_ORIGINS: http://localhost:${EKCP_WEB_HOST_PORT:-3210}
+      AUTH_MODE: ${AUTH_MODE:-secure}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
     ports:
@@ -38,9 +39,12 @@ services:
     build:
       context: ./apps/web
       args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8210}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-}
     environment:
       PORT: 3210
+      # 同一オリジンで公開するため、Next.js の rewrites がコンテナ内部で
+      # api サービスへプロキシする(ブラウザは常に web の1オリジンのみ知ればよい)。
+      API_PROXY_TARGET: http://api:8210
     ports:
       - "127.0.0.1:${EKCP_WEB_HOST_PORT:-3210}:3210"
     depends_on:

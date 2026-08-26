@@ -5,6 +5,15 @@ import type { Role } from "./rbac.js";
 const JWT_SECRET = process.env.JWT_SECRET ?? "ekcp-dev-secret-change-me";
 const JWT_TTL_SECONDS = 60 * 60 * 8;
 
+/**
+ * AUTH_MODE=open の場合、パスワード検証を省略する(MVP検証環境を
+ * 誰でも閲覧・操作できるようにするための明示的なフラグ)。
+ * 既定は "secure"(fail-closed)。本番相当の環境では必ず未設定のままにする。
+ */
+export function isAuthOpen(): boolean {
+  return process.env.AUTH_MODE === "open";
+}
+
 export interface AuthTokenPayload {
   sub: string;
   role: Role;

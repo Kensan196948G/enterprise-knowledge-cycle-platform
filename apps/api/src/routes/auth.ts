@@ -3,7 +3,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
-import { signToken, verifyPassword } from "../lib/auth.js";
+import { signToken, verifyPassword, isAuthOpen } from "../lib/auth.js";
 import { recordAudit } from "../lib/audit.js";
 import { authGuard } from "../middleware/auth-guard.js";
 
@@ -13,6 +13,21 @@ const loginSchema = z.object({
 });
 
 export const authRoutes = new Hono();
+
+/** 認証不要。フロントエンドがログイン画面を出すか自動ログインするかの判定に使う */
+authRoutes.get("/mode", (c) => c.json({ open: isAuthOpen() }));
+
+/**
+ * AUTH_MODE=open のときのみ有効。パスワードを含まない安全な一覧を返し、
+ * フロントエンドのロール切替UIが実在ユーザーを動的に表示できるようにする。
+ */
+authRoutes.get("/demo-users", async (c) => {
+  if (!isAuthOpen()) return c.json({ error: "Not found" }, 404);
+  const rows = await db
+    .select({ email: users.email, name: users.name, role: users.role, department: users.department })
+    .from(users);
+  return c.json({ items: rows });
+});
 
 authRoutes.post("/login", async (c) => {
   const body = await c.req.json().catch(() => null);
@@ -26,7 +41,8 @@ authRoutes.post("/login", async (c) => {
     .where(eq(users.email, parsed.data.email))
     .limit(1);
 
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+  const passwordOk = isAuthOpen() ? !!user : !!user && (await verifyPassword(parsed.data.password, user.passwordHash));
+  if (!user || !passwordOk) {
     return c.json({ error: "認証に失敗しました" }, 401);
   }
 
@@ -41,7 +57,7 @@ authRoutes.post("/login", async (c) => {
 
   return c.json({
     token,
-    user: { id: user.id, name: user.name, role: user.role, department: user.department },
+    user: { id: user.id, name: user.name, role: user.role, department: user.department, email: user.email },
   });
 });
 

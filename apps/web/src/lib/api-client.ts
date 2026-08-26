@@ -1,4 +1,9 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8210";
+/**
+ * 既定は同一オリジンの相対パス。next.config.js の rewrites が /api/* を
+ * APIサーバーへプロキシするため、公開URL(サブドメイン)を1つに統一できる。
+ * NEXT_PUBLIC_API_BASE_URL を明示指定した場合のみ別オリジンを使う。
+ */
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
 export class ApiError extends Error {
   status: number;
@@ -44,6 +49,11 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   me: () => request<import("./types").AuthUser>("/api/v1/auth/me"),
+  authMode: () => request<{ open: boolean }>("/api/v1/auth/mode"),
+  demoUsers: () =>
+    request<{ items: Array<{ email: string; name: string; role: string; department: string | null }> }>(
+      "/api/v1/auth/demo-users",
+    ),
 
   listSources: () => request<{ items: import("./types").SourceDocument[] }>("/api/v1/sources"),
   createSource: (input: { title: string; contentText: string; projectSite?: string; workCategory?: string[] }) =>
