@@ -96,6 +96,58 @@ export default function MetricsPage() {
           </div>
         </div>
       </div>
+
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
+        <div className="rounded-[10px] border border-borderc bg-white p-[17px] shadow-sm">
+          <div className="mb-1 text-sm font-semibold text-ink">分野別レビュー品質（傾向分析）</div>
+          <div className="mb-3.5 text-[11.5px] text-muted">差戻し・却下の割合が高い分野ほど、ナレッジの質に課題がある可能性を示します。</div>
+          <div className="flex flex-col gap-2.5">
+            {metrics.trends.categoryQuality.length === 0 && (
+              <p className="text-[12.5px] text-muted">レビュー確定件数がまだ十分にありません。</p>
+            )}
+            {metrics.trends.categoryQuality.map((c) => (
+              <div key={c.category} className="flex items-center gap-2.5">
+                <span className="w-24 shrink-0 truncate text-[12.5px] text-subtle">{c.category}</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-[3px] bg-panel">
+                  <span
+                    className="block h-full rounded-[3px]"
+                    style={{ width: `${(c.issueRate ?? 0) * 100}%`, background: (c.issueRate ?? 0) >= 0.3 ? "#C5392F" : "#B5701A" }}
+                  />
+                </div>
+                <span className="w-16 shrink-0 text-right font-mono text-[12px] text-ink">
+                  {c.issueRate !== null ? `${Math.round(c.issueRate * 100)}%` : "-"}
+                </span>
+                <span className="w-16 shrink-0 text-right text-[11px] text-muted">{c.issueCount}/{c.decidedCount}件</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-[10px] border border-borderc bg-white p-[17px] shadow-sm">
+          <div className="mb-1 text-sm font-semibold text-ink">レビュー滞留状況（傾向分析）</div>
+          <div className="mb-3.5 text-[11.5px] text-muted">レビュー待ちの知見が、どの程度・どのような要因で滞留しているかを示します。</div>
+          <div className="grid grid-cols-2 gap-3">
+            <TrendStat label="レビュー待ち件数" value={String(metrics.trends.stagnation.pendingCount)} />
+            <TrendStat
+              label="平均滞留日数"
+              value={metrics.trends.stagnation.avgPendingDays !== null ? `${metrics.trends.stagnation.avgPendingDays.toFixed(1)}日` : "-"}
+            />
+            <TrendStat
+              label="最長滞留日数"
+              value={metrics.trends.stagnation.maxPendingDays !== null ? `${metrics.trends.stagnation.maxPendingDays.toFixed(1)}日` : "-"}
+            />
+            <TrendStat label="矛盾を含む件数" value={String(metrics.trends.stagnation.withConflicts)} warn={metrics.trends.stagnation.withConflicts > 0} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TrendStat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
+  return (
+    <div className="rounded-lg bg-panel p-2.5">
+      <div className="text-[11px] text-muted">{label}</div>
+      <div className={`mt-0.5 text-lg font-semibold tabular-nums ${warn ? "text-reject" : "text-ink"}`}>{value}</div>
     </div>
   );
 }

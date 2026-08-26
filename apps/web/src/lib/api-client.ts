@@ -67,6 +67,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ sourceIds, title }),
     }),
+  findSimilarByText: (text: string) =>
+    request<{ items: Array<{ id: string; title: string; status: string; score: number }> }>("/api/v1/knowledge/similar-text", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
   listKnowledge: (params?: { status?: string; q?: string; workCategory?: string }) => {
     const usp = new URLSearchParams();
     if (params?.status) usp.set("status", params.status);

@@ -107,6 +107,10 @@ export interface Metrics {
   review: { decidedCount: number; returnedCount: number; returnRate: number | null; avgReviewSeconds: number | null };
   approval: { approvedCount: number; rejectedCount: number; approvalRate: number | null; avgAiConfidence: number | null };
   usage: Array<{ eventType: string; count: number }>;
+  trends: {
+    categoryQuality: Array<{ category: string; decidedCount: number; issueCount: number; issueRate: number | null }>;
+    stagnation: { pendingCount: number; avgPendingDays: number | null; maxPendingDays: number | null; withConflicts: number };
+  };
 }
 
 export interface AuditLogEntry {

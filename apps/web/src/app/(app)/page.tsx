@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { useAuth, hasAtLeastRole } from "@/lib/auth-context";
 import { StatusBadge } from "@/components/StatusBadge";
+import { priorityScore, priorityReasons } from "@/lib/priority";
 import type { KnowledgeItem, Metrics } from "@/lib/types";
 
 const DEFAULT_STAGNATION_DAYS = 3;
@@ -52,6 +53,10 @@ export default function HomePage() {
   const pending = items.filter((i) => i.status === "review_pending");
   const approved = items.filter((i) => i.status === "approved");
   const stagnant = pending.filter((i) => daysAgo(i.updatedAt) >= stagnationDays);
+  const recommended = [...pending]
+    .map((i) => ({ item: i, score: priorityScore(i, daysAgo(i.updatedAt)) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2);
   const recentApproved = [...approved]
     .sort((a, b) => (b.approvedAt ?? b.updatedAt).localeCompare(a.approvedAt ?? a.updatedAt))
     .slice(0, 5);
@@ -143,6 +148,39 @@ export default function HomePage() {
           <Link href="/review-queue" className="rounded-md border border-warn bg-white px-3 py-1 text-xs font-semibold text-warn">
             キューを開く
           </Link>
+        </div>
+      )}
+
+      {hasAtLeastRole(user.role, "reviewer") && recommended.length > 0 && (
+        <div className="rounded-[10px] border border-borderc bg-white p-4 shadow-sm">
+          <div className="mb-2.5 flex items-center gap-2">
+            <span className="text-[13px] font-semibold text-ink">🎯 今週の推奨アクション</span>
+            <span className="text-[11px] text-muted">滞留日数・矛盾件数・AI信頼度から優先度を算出</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {recommended.map(({ item: i, score }) => {
+              const reasons = priorityReasons(i, daysAgo(i.updatedAt));
+              return (
+                <Link
+                  key={i.id}
+                  href={`/knowledge/${i.id}`}
+                  className="flex items-center gap-3 rounded-lg border border-panel px-3 py-2.5 hover:bg-panel"
+                >
+                  <span
+                    className={`shrink-0 rounded-md px-2 py-1 font-mono text-[11px] font-semibold ${
+                      score >= 0.5 ? "bg-rejectBg text-reject" : "bg-warnBg text-warn"
+                    }`}
+                  >
+                    優先度 {Math.round(score * 100)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[12.5px] font-medium text-ink">{i.title}</div>
+                    {reasons.length > 0 && <div className="text-[11px] text-muted">{reasons.join(" / ")}</div>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 
