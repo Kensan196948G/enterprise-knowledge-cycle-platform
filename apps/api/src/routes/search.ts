@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { knowledgeItems, evidenceLinks, sources, usageEvents } from "../db/schema.js";
 import { authGuard } from "../middleware/auth-guard.js";
 import { newCorrelationId } from "../lib/audit.js";
+import { rankBySimilarity, knowledgeSearchableText } from "../lib/text-similarity.js";
 
 export const searchRoutes = new Hono();
 searchRoutes.use("*", authGuard);
@@ -19,6 +20,10 @@ const searchSchema = z.object({
  * FR-08 自然言語検索 / §8 検索・RAG設計。
  * 承認済み知見を優先し、includeReference=true の場合のみ未承認候補を
  * 「参考情報(reference)」として明示付きで併記する。
+ *
+ * 検索は文字bigramベースのTF-IDF類似度ランキング(意味的検索・簡易版)で行う。
+ * キーワードの完全一致だけでなく、語順の違いや部分的な表現の一致でも
+ * 関連度の高い知見を検出できる(詳細は lib/text-similarity.ts を参照)。
  */
 searchRoutes.post("/", async (c) => {
   const user = c.get("user");
@@ -26,30 +31,39 @@ searchRoutes.post("/", async (c) => {
   const parsed = searchSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "query は必須です" }, 400);
 
-  const like = `%${parsed.data.query}%`;
-  const textMatch = sql`(${knowledgeItems.title} ILIKE ${like} OR ${knowledgeItems.issue} ILIKE ${like} OR ${knowledgeItems.cause} ILIKE ${like} OR ${knowledgeItems.action} ILIKE ${like} OR ${knowledgeItems.result} ILIKE ${like})`;
   const categoryMatch = parsed.data.workCategory
-    ? sql` AND ${parsed.data.workCategory} = ANY(${knowledgeItems.workCategory})`
-    : sql``;
+    ? sql`${parsed.data.workCategory} = ANY(${knowledgeItems.workCategory})`
+    : sql`true`;
 
-  const approvedRows = await db
+  const approvedCandidates = await db
     .select()
     .from(knowledgeItems)
-    .where(sql`${knowledgeItems.status} = 'approved' AND ${textMatch}${categoryMatch}`)
-    .orderBy(desc(knowledgeItems.approvedAt))
-    .limit(20);
+    .where(sql`${knowledgeItems.status} = 'approved' AND ${categoryMatch}`)
+    .limit(300);
 
-  let referenceRows: typeof approvedRows = [];
+  let referenceCandidates: typeof approvedCandidates = [];
   if (parsed.data.includeReference) {
-    referenceRows = await db
+    referenceCandidates = await db
       .select()
       .from(knowledgeItems)
-      .where(
-        sql`${knowledgeItems.status} IN ('ai_processed','review_pending') AND ${textMatch}${categoryMatch}`,
-      )
-      .orderBy(desc(knowledgeItems.updatedAt))
-      .limit(10);
+      .where(sql`${knowledgeItems.status} IN ('ai_processed','review_pending') AND ${categoryMatch}`)
+      .limit(300);
   }
+
+  const rankedApproved = rankBySimilarity(
+    parsed.data.query,
+    approvedCandidates.map((r) => ({ id: r.id, text: knowledgeSearchableText(r) })),
+    { limit: 20 },
+  );
+  const rankedReference = rankBySimilarity(
+    parsed.data.query,
+    referenceCandidates.map((r) => ({ id: r.id, text: knowledgeSearchableText(r) })),
+    { limit: 10 },
+  );
+  const approvedById = new Map(approvedCandidates.map((r) => [r.id, r]));
+  const referenceById = new Map(referenceCandidates.map((r) => [r.id, r]));
+  const approvedRows = rankedApproved.map((r) => approvedById.get(r.id)!);
+  const referenceRows = rankedReference.map((r) => referenceById.get(r.id)!);
 
   const allIds = [...approvedRows, ...referenceRows].map((r) => r.id);
   const evidenceByKnowledge: Record<string, unknown[]> = {};

@@ -54,6 +54,47 @@ metricsRoutes.get("/", async (c) => {
     select event_type, count(*)::int as count from usage_events group by event_type
   `);
 
+  /**
+   * 傾向分析(1): 分野(work_category)別のレビュー品質。差戻し・却下が集中している
+   * 分野を可視化し、どこにナレッジの質の課題があるかを把握できるようにする。
+   */
+  const categoryQualityResult = await db.execute<{
+    category: string;
+    decided_count: number;
+    issue_count: number;
+  }>(sql`
+    select cat as category,
+      count(*) filter (where rc.decision <> 'pending')::int as decided_count,
+      count(*) filter (where rc.decision in ('returned','rejected'))::int as issue_count
+    from knowledge_items ki
+    cross join lateral unnest(ki.work_category) as cat
+    join review_cases rc on rc.knowledge_id = ki.id
+    group by cat
+    having count(*) filter (where rc.decision <> 'pending') > 0
+    order by (count(*) filter (where rc.decision in ('returned','rejected')))::float
+      / nullif(count(*) filter (where rc.decision <> 'pending'), 0) desc
+  `);
+
+  /**
+   * 傾向分析(2): レビュー待ちの滞留要因。件数だけでなく、平均滞留日数・矛盾を
+   * 抱えている件数・最長滞留日数を示し、どこに手当てが必要かを判断しやすくする。
+   */
+  const stagnationResult = await db.execute<{
+    pending_count: number;
+    avg_pending_days: number | null;
+    max_pending_days: number | null;
+    with_conflicts: number;
+  }>(sql`
+    select
+      count(*)::int as pending_count,
+      avg(extract(epoch from (now() - updated_at)) / 86400) as avg_pending_days,
+      max(extract(epoch from (now() - updated_at)) / 86400) as max_pending_days,
+      count(*) filter (where jsonb_array_length(coalesce(ai_output->'conflicts', '[]'::jsonb)) > 0)::int as with_conflicts
+    from knowledge_items
+    where status = 'review_pending'
+  `);
+  const stagnation = stagnationResult.rows[0];
+
   const decidedCount = Number(reviewStats?.decided_count ?? 0);
   const returnedCount = Number(reviewStats?.returned_count ?? 0);
   const approvedCount = Number(approvalStats?.approved_count ?? 0);
@@ -79,5 +120,19 @@ metricsRoutes.get("/", async (c) => {
       avgAiConfidence: approvalStats?.avg_ai_confidence ? Number(approvalStats.avg_ai_confidence) : null,
     },
     usage: usageBreakdownResult.rows.map((r) => ({ eventType: r.event_type, count: Number(r.count) })),
+    trends: {
+      categoryQuality: categoryQualityResult.rows.map((r) => ({
+        category: r.category,
+        decidedCount: Number(r.decided_count),
+        issueCount: Number(r.issue_count),
+        issueRate: Number(r.decided_count) > 0 ? Number(r.issue_count) / Number(r.decided_count) : null,
+      })),
+      stagnation: {
+        pendingCount: Number(stagnation?.pending_count ?? 0),
+        avgPendingDays: stagnation?.avg_pending_days !== null && stagnation?.avg_pending_days !== undefined ? Number(stagnation.avg_pending_days) : null,
+        maxPendingDays: stagnation?.max_pending_days !== null && stagnation?.max_pending_days !== undefined ? Number(stagnation.max_pending_days) : null,
+        withConflicts: Number(stagnation?.with_conflicts ?? 0),
+      },
+    },
   });
 });

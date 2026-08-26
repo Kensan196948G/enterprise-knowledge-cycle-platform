@@ -1,8 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { api, ApiError } from "@/lib/api-client";
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "下書き",
+  ai_processed: "AI構造化済み（参考）",
+  review_pending: "レビュー待ち",
+  returned: "差戻し",
+  approved: "承認済み（正式知見）",
+  rejected: "却下",
+  revalidation_required: "要再確認",
+  archived: "廃止（旧版）",
+};
 
 interface ParsedPreview {
   fields: Array<{ label: string; text: string | null }>;
@@ -68,6 +80,21 @@ export default function RegisterPage() {
 
   const preview = useMemo(() => parsePreview(contentText), [contentText]);
   const empty = !contentText.trim();
+
+  const [similar, setSimilar] = useState<Array<{ id: string; title: string; status: string; score: number }>>([]);
+  useEffect(() => {
+    if (contentText.trim().length < 15) {
+      setSimilar([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      api
+        .findSimilarByText(contentText)
+        .then((r) => setSimilar(r.items))
+        .catch(() => undefined);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [contentText]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -135,43 +162,65 @@ export default function RegisterPage() {
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-[10px] border border-[#B9A8DD] bg-white lg:sticky lg:top-0">
-        <div className="flex items-center gap-2.5 bg-aiRefBg px-4 py-3.5">
-          <span className="text-[13px] font-semibold text-aiRef">🤖 AIライブプレビュー（参考案）</span>
-          <div className="flex-1" />
-          <span className="font-mono text-[11px] font-semibold text-aiRef">
-            信頼度 {empty ? "—" : `${Math.round(preview.confidence * 100)}%`}
-          </span>
-        </div>
-        <div className="flex flex-col gap-2.5 p-4">
-          {empty && (
-            <p className="text-[12.5px] leading-relaxed text-muted">
-              左に書き始めると、AIが「課題・原因・対応・結果・適用条件」に整理した下書きがここに表示されます。
-              <br />
-              <br />
-              AIは原文にない内容を補完しません。読み取れない項目は「不明」として明示されます。
-            </p>
-          )}
-          {!empty &&
-            preview.fields.map((f) => (
-              <div key={f.label}>
-                <div className="text-[11px] font-semibold text-aiRef">{f.label}</div>
-                <div className={`mt-0.5 text-[12.5px] leading-relaxed ${f.text ? "text-ink" : "italic text-[#A2AEBC]"}`}>
-                  {f.text ?? "不明（原文に記述なし）"}
+      <div className="flex flex-col gap-4 lg:sticky lg:top-0">
+        {similar.length > 0 && (
+          <div className="overflow-hidden rounded-[10px] border border-orange-200 bg-white">
+            <div className="bg-warnBg px-4 py-2.5 text-[12.5px] font-semibold text-warn">
+              ⚠ 類似の可能性がある既存知見（{similar.length}件）
+            </div>
+            <div className="flex flex-col">
+              {similar.map((s) => (
+                <Link
+                  key={s.id}
+                  href={`/knowledge/${s.id}`}
+                  target="_blank"
+                  className="flex items-center gap-2.5 border-b border-panel px-4 py-2.5 text-[12px] last:border-b-0 hover:bg-panel"
+                >
+                  <span className="min-w-0 flex-1 truncate text-ink">{s.title}</span>
+                  <span className="shrink-0 text-[10.5px] text-muted">{STATUS_LABEL[s.status] ?? s.status}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="overflow-hidden rounded-[10px] border border-[#B9A8DD] bg-white">
+          <div className="flex items-center gap-2.5 bg-aiRefBg px-4 py-3.5">
+            <span className="text-[13px] font-semibold text-aiRef">🤖 AIライブプレビュー（参考案）</span>
+            <div className="flex-1" />
+            <span className="font-mono text-[11px] font-semibold text-aiRef">
+              信頼度 {empty ? "—" : `${Math.round(preview.confidence * 100)}%`}
+            </span>
+          </div>
+          <div className="flex flex-col gap-2.5 p-4">
+            {empty && (
+              <p className="text-[12.5px] leading-relaxed text-muted">
+                左に書き始めると、AIが「課題・原因・対応・結果・適用条件」に整理した下書きがここに表示されます。
+                <br />
+                <br />
+                AIは原文にない内容を補完しません。読み取れない項目は「不明」として明示されます。
+              </p>
+            )}
+            {!empty &&
+              preview.fields.map((f) => (
+                <div key={f.label}>
+                  <div className="text-[11px] font-semibold text-aiRef">{f.label}</div>
+                  <div className={`mt-0.5 text-[12.5px] leading-relaxed ${f.text ? "text-ink" : "italic text-[#A2AEBC]"}`}>
+                    {f.text ?? "不明（原文に記述なし）"}
+                  </div>
                 </div>
+              ))}
+            {!empty && preview.unknowns.length > 0 && (
+              <div className="rounded-lg bg-warnBg px-3 py-2.5 text-[11.5px] leading-relaxed text-warn">
+                <span className="font-semibold">不明・要確認:</span> {preview.unknowns.join(" / ")}
               </div>
-            ))}
-          {!empty && preview.unknowns.length > 0 && (
-            <div className="rounded-lg bg-warnBg px-3 py-2.5 text-[11.5px] leading-relaxed text-warn">
-              <span className="font-semibold">不明・要確認:</span> {preview.unknowns.join(" / ")}
-            </div>
-          )}
-          {!empty && (
-            <div className="border-t border-panel pt-2.5 text-[11px] leading-relaxed text-muted">
-              この下書きは<span className="font-semibold text-aiRef">AI生成の参考案</span>
-              です。正式な知見になるには、レビュー担当と承認権限者の確認が必要です。
-            </div>
-          )}
+            )}
+            {!empty && (
+              <div className="border-t border-panel pt-2.5 text-[11px] leading-relaxed text-muted">
+                この下書きは<span className="font-semibold text-aiRef">AI生成の参考案</span>
+                です。正式な知見になるには、レビュー担当と承認権限者の確認が必要です。
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

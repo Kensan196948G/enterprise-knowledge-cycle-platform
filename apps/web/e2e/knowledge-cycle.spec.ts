@@ -41,7 +41,9 @@ test("golden path: register -> AI structure -> review -> approve -> search", asy
   await expect(page.getByText("レビュー待ち")).toBeVisible();
   await page.getByRole("button", { name: "承認", exact: true }).click();
   await expect(page.getByText("承認しました")).toBeVisible();
-  await expect(page.getByText("承認済み（正式知見）")).toBeVisible();
+  // 類似する承認済み知見セクションにも同じバッジが表示され得るため、対象自身の
+  // バッジ(常にDOM上で最初に出現する)に絞って確認する
+  await expect(page.getByText("承認済み（正式知見）").first()).toBeVisible();
 
   // 3. General user searches and finds it in the approved bucket
   await login(page, USER);

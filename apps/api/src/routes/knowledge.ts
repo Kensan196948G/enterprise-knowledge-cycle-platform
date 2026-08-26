@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, arrayOverlaps, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../db/client.js";
 import {
   knowledgeItems,
@@ -16,6 +16,24 @@ import { permissions, OWNER_DELETABLE_STATUSES, APPROVER_DELETABLE_STATUSES } fr
 import { runAiStructuring } from "../lib/ai-structuring.js";
 import { recordAudit } from "../lib/audit.js";
 import { getSettings } from "../lib/settings.js";
+import { rankBySimilarity, rankSimilarDocs, knowledgeSearchableText } from "../lib/text-similarity.js";
+
+function rankBySimilarityForKnowledge(
+  query: string,
+  candidates: (typeof knowledgeItems.$inferSelect)[],
+  opts: { limit: number; minScore: number },
+) {
+  const ranked = rankBySimilarity(
+    query,
+    candidates.map((r) => ({ id: r.id, text: knowledgeSearchableText(r) })),
+    opts,
+  );
+  const byId = new Map(candidates.map((r) => [r.id, r]));
+  return ranked.map((r) => {
+    const row = byId.get(r.id)!;
+    return { id: row.id, title: row.title, status: row.status, score: r.score };
+  });
+}
 
 export const knowledgeRoutes = new Hono();
 
@@ -107,6 +125,30 @@ knowledgeRoutes.post("/candidates", requireRole(permissions.runAiStructuring), a
   });
 
   return c.json(created, 201);
+});
+
+const similarTextSchema = z.object({ text: z.string().min(1) });
+
+/**
+ * 登録画面のライブプレビュー向け: 入力中の自由記述文と類似する既存知見を
+ * TF-IDF類似度で検索する(重複登録の防止・既存知見の再利用促進)。
+ * rejected/archivedを除く全ステータスを対象とし、下書き段階の重複にも気づける
+ * ようにする。
+ */
+knowledgeRoutes.post("/similar-text", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const parsed = similarTextSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: "text は必須です" }, 400);
+
+  const candidates = await db
+    .select()
+    .from(knowledgeItems)
+    .where(sql`${knowledgeItems.status} NOT IN ('rejected', 'archived')`)
+    .limit(300);
+  if (candidates.length === 0) return c.json({ items: [] });
+
+  const ranked = rankBySimilarityForKnowledge(parsed.data.text, candidates, { limit: 5, minScore: 0.08 });
+  return c.json({ items: ranked });
 });
 
 const listQuerySchema = z.object({
@@ -281,27 +323,43 @@ knowledgeRoutes.delete("/:id", async (c) => {
   return c.body(null, 204);
 });
 
-/** §9 類似知見: 同一work_categoryを共有する承認済み知見を簡易類似検索する */
+/**
+ * §9 類似知見: 承認済み知見の中から、内容(課題・原因・対応・結果)ベースの
+ * 意味的類似度(TF-IDFコサイン類似度、lib/text-similarity.ts参照)でランク付け
+ * して返す。同一work_categoryを共有する場合はスコアを加点する。従来は
+ * work_categoryの完全一致のみに依存しており、タグが無い/異なる知見は
+ * 内容が近くても一切表示されなかった。
+ */
 knowledgeRoutes.get("/:id/similar", async (c) => {
   const id = c.req.param("id") as string;
   const [item] = await db.select().from(knowledgeItems).where(eq(knowledgeItems.id, id)).limit(1);
   if (!item) return c.json({ error: "見つかりません" }, 404);
 
-  if (item.workCategory.length === 0) return c.json({ items: [] });
-
-  const rows = await db
+  const candidates = await db
     .select()
     .from(knowledgeItems)
-    .where(
-      and(
-        eq(knowledgeItems.status, "approved"),
-        sql`${knowledgeItems.workCategory} && ${item.workCategory}`,
-        sql`${knowledgeItems.id} != ${id}`,
-      ),
-    )
-    .limit(10);
+    .where(and(eq(knowledgeItems.status, "approved"), ne(knowledgeItems.id, id)))
+    .limit(300);
+  if (candidates.length === 0) return c.json({ items: [] });
 
-  return c.json({ items: rows });
+  const targetText = knowledgeSearchableText(item);
+  const ranked = rankSimilarDocs(
+    { id: item.id, text: targetText },
+    candidates.map((r) => ({ id: r.id, text: knowledgeSearchableText(r) })),
+    { limit: 10 },
+  );
+  const byId = new Map(candidates.map((r) => [r.id, r]));
+  const sameCategory = item.workCategory.length > 0 ? arrayOverlaps(knowledgeItems.workCategory, item.workCategory) : undefined;
+  const categoryIds = sameCategory
+    ? new Set((await db.select({ id: knowledgeItems.id }).from(knowledgeItems).where(and(sameCategory, ne(knowledgeItems.id, id)))).map((r) => r.id))
+    : new Set<string>();
+
+  const items = ranked
+    .map((r) => ({ score: r.score + (categoryIds.has(r.id) ? 0.15 : 0), row: byId.get(r.id)! }))
+    .sort((a, b) => b.score - a.score)
+    .map((r) => r.row);
+
+  return c.json({ items });
 });
 
 const archiveSchema = z.object({ reason: z.string().min(1, "廃止理由は必須です") });
