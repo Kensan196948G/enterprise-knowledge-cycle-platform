@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社内ナレッジ循環基盤 詳細仕様設計書</title>
+<style>
+:root{
+  --bg:#f3f6fb;--card:#fff;--ink:#172033;--muted:#5f6f86;--line:#d9e2ef;
+  --navy:#102a4c;--blue:#2563eb;--blue2:#eaf1ff;--green:#16803d;--green2:#eaf8ef;
+  --orange:#c15b0b;--orange2:#fff2e8;--purple:#7540c9;--purple2:#f2ecff;--red:#b42318;--red2:#fff0ee;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif;line-height:1.72}
+header{background:linear-gradient(135deg,#0f2747,#174f88 58%,#2563eb);color:#fff;padding:54px 24px 44px}
+.wrap{max-width:1180px;margin:auto}.eyebrow{display:inline-block;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:5px 11px;font-size:12px;background:rgba(255,255,255,.08)}
+h1{font-size:clamp(28px,4.6vw,48px);line-height:1.25;margin:14px 0 10px}header p{max-width:930px;margin:0;color:#e7eef9}
+main{max-width:1180px;margin:auto;padding:30px 24px 70px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;margin:0 0 22px;box-shadow:0 7px 26px rgba(17,40,71,.05)}
+h2{color:var(--navy);font-size:25px;margin:0 0 16px}h3{color:#233f63;font-size:19px;margin:20px 0 10px}
+p{margin:8px 0}.lead{font-size:17px}.muted{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.box{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff}.box.blue{background:var(--blue2)}.box.green{background:var(--green2)}.box.purple{background:var(--purple2)}.box.orange{background:var(--orange2)}
+.callout{border-left:5px solid var(--blue);background:var(--blue2);border-radius:10px;padding:16px 18px;margin:14px 0}
+.warn{border-left-color:var(--orange);background:var(--orange2)}.danger{border-left-color:var(--red);background:var(--red2)}.ok{border-left-color:var(--green);background:var(--green2)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#f6f8fc;color:#294461;white-space:nowrap}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+code{background:#eef2f7;padding:2px 5px;border-radius:5px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2f7;color:#31445e}.badge.req{background:var(--blue2);color:#1d4ed8}.badge.human{background:var(--green2);color:#166534}.badge.ai{background:var(--purple2);color:#6d28d9}.badge.tbd{background:var(--orange2);color:#9a4b07}
+.flow{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}.step{min-width:125px;border:1px solid var(--line);border-radius:11px;padding:12px;background:#fff}.step b{display:block;color:var(--navy)}
+.toc{columns:2;column-gap:34px}.toc a{color:#245da8;text-decoration:none}.toc li{break-inside:avoid;margin:4px 0}
+ul,ol{padding-left:1.3em}.small{font-size:13px}
+.footer{color:var(--muted);font-size:12px;text-align:center;padding:12px 24px 35px}
+@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}.toc{columns:1}.card{padding:20px}}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}.toc a{color:#000}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<span class="eyebrow">Enterprise Knowledge Cycle Platform｜Detailed Specification Design</span>
+<h1>社内ナレッジ循環基盤 詳細仕様設計書</h1>
+<p>承認済み企画および要件定義を、製品非依存の論理アーキテクチャ、データ、AIパイプライン、RAG、承認、API、UI、監査、テスト仕様へ具体化した詳細設計。</p>
+</div></header>
+<main>
+<section class="card" id="doc"><h2>0. 文書管理</h2>
+<div class="table-wrap"><table>
+<tr><th>文書名</th><td>社内ナレッジ循環基盤 詳細仕様設計書</td><th>プロジェクト</th><td>Enterprise Knowledge Cycle Platform</td></tr>
+<tr><th>リポジトリ名</th><td><code>enterprise-knowledge-cycle-platform</code></td><th>版</th><td>1.0（論理詳細設計）</td></tr>
+<tr><th>上位文書</th><td colspan="3">承認済み企画書、および「社内ナレッジ循環基盤 要件定義書 v1.0」</td></tr>
+</table></div>
+<div class="callout"><strong>設計方針：</strong>製品非依存の論理詳細設計とし、実装製品が変わっても「根拠付きAI」「Human-in-the-loop」「正式知見の分離」「監査可能性」が崩れない構造とする。</div>
+</section>
+
+<section class="card" id="toc"><h2>目次</h2><ol class="toc">
+<li><a href="#architecture">全体アーキテクチャ</a></li><li><a href="#components">コンポーネント設計</a></li><li><a href="#domain">ドメインモデル</a></li>
+<li><a href="#schema">主要データスキーマ</a></li><li><a href="#status">ステータス・状態遷移</a></li><li><a href="#ingest">取込・統合処理</a></li>
+<li><a href="#pipeline">AI処理パイプライン</a></li><li><a href="#rag">検索・RAG設計</a></li><li><a href="#review">レビュー・承認設計</a></li>
+<li><a href="#standard">標準反映設計</a></li><li><a href="#ui">画面仕様</a></li><li><a href="#api">API論理仕様</a></li>
+<li><a href="#auth">権限・認可設計</a></li><li><a href="#audit">監査・版管理設計</a></li><li><a href="#quality">AI品質設計</a></li>
+<li><a href="#error">エラー・例外設計</a></li><li><a href="#batch">ジョブ・通知設計</a></li><li><a href="#observability">監視・ログ設計</a></li>
+<li><a href="#test">テスト仕様</a></li><li><a href="#poc">PoC実装範囲</a></li><li><a href="#tbd">技術選定TBD</a></li>
+</ol></section>
+
+<section class="card" id="architecture"><h2>1. 全体アーキテクチャ</h2>
+<div class="grid3">
+<div class="box"><h3>Source Layer</h3><p>Slack、文書、共有ストレージ、Google Drive / Microsoft 365、CDE、BIM/CIM、施工管理、安全品質記録、写真・図面・設計計算書。</p></div>
+<div class="box blue"><h3>Knowledge Core</h3><p>原文ストア、メタデータ、検索インデックス、ベクトル検索、ナレッジグラフ、承認済み知見、標準・仕様、監査ログ。</p></div>
+<div class="box purple"><h3>AI / Agent Layer</h3><p>文書解析、分類、知見候補生成、技術レビュー支援、標準改訂支援、効果分析。</p></div>
+</div>
+<div class="flow" style="margin-top:16px">
+<div class="step"><b>Connectors</b>取得</div><div class="step"><b>Raw Store</b>原文保存</div><div class="step"><b>Parser</b>抽出</div><div class="step"><b>Knowledge Builder</b>構造化</div><div class="step"><b>Review</b>人承認</div><div class="step"><b>Approved Store</b>正式知見</div><div class="step"><b>Search/RAG</b>活用</div><div class="step"><b>Analytics</b>効果検証</div>
+</div>
+</section>
+
+<section class="card" id="components"><h2>2. コンポーネント設計</h2>
+<div class="table-wrap"><table><thead><tr><th>ID</th><th>コンポーネント</th><th>責務</th><th>重要制約</th></tr></thead><tbody>
+<tr><td>C01</td><td>Source Connector</td><td>外部情報源からメタデータ・原文・更新情報を取得</td><td>元権限・出典・更新日時を保持</td></tr>
+<tr><td>C02</td><td>Raw Content Store</td><td>取込時点の原文・添付・ハッシュを保存</td><td>AI生成で上書きしない</td></tr>
+<tr><td>C03</td><td>Document Parser</td><td>テキスト・メタデータ・ページ/段落位置等を抽出</td><td>抽出元位置を追跡</td></tr>
+<tr><td>C04</td><td>Metadata Service</td><td>案件・工種・分類・出所・機密区分等を管理</td><td>人編集可能</td></tr>
+<tr><td>C05</td><td>Knowledge Builder</td><td>課題・原因・対策・結果・条件等へ構造化</td><td>AI生成状態で保存</td></tr>
+<tr><td>C06</td><td>Similarity / RAG Engine</td><td>全文・ベクトル・属性検索、類似知見抽出</td><td>承認状態をランキングに反映</td></tr>
+<tr><td>C07</td><td>Knowledge Draft Agent</td><td>知見候補ドラフト生成</td><td>根拠ID必須</td></tr>
+<tr><td>C08</td><td>Review Support Agent</td><td>矛盾、不足、旧版、適用条件、類似事例の提示</td><td>判断確定をしない</td></tr>
+<tr><td>C09</td><td>Review Workflow</td><td>レビュー、差戻し、承認、却下、エスカレーション</td><td>承認者を記録</td></tr>
+<tr><td>C10</td><td>Approved Knowledge Store</td><td>正式知見の版・状態を保持</td><td>未承認と論理/物理分離</td></tr>
+<tr><td>C11</td><td>Standards Support</td><td>標準・仕様・チェックリスト改訂候補生成</td><td>Phase 2、別承認</td></tr>
+<tr><td>C12</td><td>Audit & Analytics</td><td>操作・AI処理・承認・利用・効果を記録</td><td>追記型を基本</td></tr>
+</tbody></table></div></section>
+
+<section class="card" id="domain"><h2>3. ドメインモデル</h2>
+<div class="grid3">
+<div class="box"><h3>SourceDocument</h3><p>原文。出典、版、更新日時、所有元、アクセス区分、ハッシュを持つ。</p></div>
+<div class="box"><h3>KnowledgeCandidate</h3><p>AIが生成・構造化した知見候補。正式知見ではない。</p></div>
+<div class="box green"><h3>ApprovedKnowledge</h3><p>人が承認した正式知見。適用条件・例外・根拠・承認証跡を持つ。</p></div>
+<div class="box"><h3>EvidenceLink</h3><p>知見項目と原文のページ、段落、添付、URL等を関連付ける。</p></div>
+<div class="box"><h3>ReviewCase</h3><p>レビュー依頼、担当者、コメント、判断、差戻し理由を保持。</p></div>
+<div class="box"><h3>StandardArtifact</h3><p>標準書、チェックリスト、教育資料等。知見との反映関係を保持。</p></div>
+<div class="box"><h3>UsageEvent</h3><p>検索、閲覧、引用、再利用、評価等を記録。</p></div>
+<div class="box"><h3>AIExecution</h3><p>モデル、設定、プロンプト版、入力参照、出力、評価を記録。</p></div>
+<div class="box"><h3>Taxonomy</h3><p>工種、業務分類、設備、原因、対策、タグ等の統制語彙。</p></div>
+</div></section>
+
+<section class="card" id="schema"><h2>4. 主要データスキーマ</h2>
+<h3>4.1 KnowledgeCandidate / ApprovedKnowledge 共通</h3>
+<div class="table-wrap"><table><thead><tr><th>項目</th><th>型（論理）</th><th>必須</th><th>説明</th></tr></thead><tbody>
+<tr><td>knowledge_id</td><td>UUID/String</td><td>Yes</td><td>知見一意ID</td></tr>
+<tr><td>title</td><td>String</td><td>Yes</td><td>タイトル</td></tr>
+<tr><td>version</td><td>Integer/String</td><td>Yes</td><td>版番号</td></tr>
+<tr><td>status</td><td>Enum</td><td>Yes</td><td>Draft / AI-Processed / Review-Pending / Approved 等</td></tr>
+<tr><td>source_ids</td><td>Array</td><td>Yes</td><td>根拠となる原文ID</td></tr>
+<tr><td>project_site</td><td>String/Ref</td><td>No</td><td>案件・現場</td></tr>
+<tr><td>work_category</td><td>Array</td><td>No</td><td>工種・業務分類</td></tr>
+<tr><td>issue</td><td>Text</td><td>Yes*</td><td>課題・事象</td></tr>
+<tr><td>cause</td><td>Text</td><td>No</td><td>原因</td></tr>
+<tr><td>action</td><td>Text</td><td>No</td><td>実施した対応</td></tr>
+<tr><td>result</td><td>Text</td><td>No</td><td>結果</td></tr>
+<tr><td>outcome_type</td><td>Enum</td><td>No</td><td>Success / Failure / Mixed / Unknown</td></tr>
+<tr><td>applicable_conditions</td><td>Array/Text</td><td>No</td><td>適用条件</td></tr>
+<tr><td>exclusion_conditions</td><td>Array/Text</td><td>No</td><td>注意・適用不可条件</td></tr>
+<tr><td>standards_refs</td><td>Array</td><td>No</td><td>基準・仕様・版</td></tr>
+<tr><td>ai_confidence</td><td>Number</td><td>No</td><td>参考値。承認代替不可</td></tr>
+<tr><td>reviewer_ids</td><td>Array</td><td>No</td><td>レビュー担当</td></tr>
+<tr><td>approver_id</td><td>String/Ref</td><td>Approved時Yes</td><td>最終承認者</td></tr>
+<tr><td>approved_at</td><td>DateTime</td><td>Approved時Yes</td><td>承認日時</td></tr>
+<tr><td>created_at / updated_at</td><td>DateTime</td><td>Yes</td><td>監査用日時</td></tr>
+</tbody></table></div>
+<h3>4.2 EvidenceLink</h3>
+<p><code>evidence_id</code>, <code>knowledge_id</code>, <code>source_id</code>, <code>location_type</code>, <code>page</code>, <code>section</code>, <code>paragraph</code>, <code>quote_hash</code>, <code>source_version</code>, <code>verified</code> を保持する。</p>
+</section>
+
+<section class="card" id="status"><h2>5. ステータス・状態遷移</h2>
+<div class="table-wrap"><table><thead><tr><th>From</th><th>操作</th><th>To</th><th>実行主体</th><th>条件</th></tr></thead><tbody>
+<tr><td>Draft</td><td>AI処理</td><td>AI-Processed</td><td>AI/システム</td><td>原文・出典が存在</td></tr>
+<tr><td>AI-Processed</td><td>レビュー依頼</td><td>Review-Pending</td><td>登録者/システム</td><td>必須項目チェック</td></tr>
+<tr><td>Review-Pending</td><td>差戻し</td><td>Returned</td><td>レビュー担当</td><td>理由必須</td></tr>
+<tr><td>Returned</td><td>再提出</td><td>Review-Pending</td><td>登録者/担当</td><td>修正履歴保持</td></tr>
+<tr><td>Review-Pending</td><td>承認</td><td>Approved</td><td>承認権限者</td><td>根拠・適用条件確認</td></tr>
+<tr><td>Review-Pending</td><td>却下</td><td>Rejected</td><td>承認権限者</td><td>理由必須</td></tr>
+<tr><td>Approved</td><td>再確認要求</td><td>Revalidation-Required</td><td>システム/管理者</td><td>根拠版変更等</td></tr>
+<tr><td>Approved</td><td>廃止</td><td>Archived</td><td>権限者</td><td>廃止理由必須</td></tr>
+</tbody></table></div></section>
+
+<section class="card" id="ingest"><h2>6. 取込・統合処理</h2>
+<ol>
+<li>Connectorが対象情報のメタデータを取得。</li><li>アクセス可否・機密区分・対象可否を判定。</li>
+<li>原文をRaw Storeへ保存し、ハッシュを計算。</li><li>既存source_id / hashと比較し、新規・更新・重複を判定。</li>
+<li>Parserで本文、ページ、段落、添付、表等を抽出。</li><li>分類候補・案件・工種・日付・関係語を抽出。</li>
+<li>検索インデックス/ベクトル表現を更新。</li><li>知見候補生成対象キューへ登録。</li>
+</ol>
+<div class="callout warn"><strong>データクレンジング：</strong>文字化け、空文書、完全重複、破損ファイル、対象外機密、参照不能データを隔離し、AIへ無条件投入しない。重複は削除ではなく、同一性を記録したうえで代表データへ集約する。</div>
+</section>
+
+<section class="card" id="pipeline"><h2>7. AI処理パイプライン</h2>
+<div class="flow">
+<div class="step"><b>A1 抽出</b>事実・項目</div><div class="step"><b>A2 分類</b>工種・業務</div><div class="step"><b>A3 照合</b>既存類似</div><div class="step"><b>A4 候補化</b>課題/原因/対応/結果</div><div class="step"><b>A5 Evidence</b>根拠紐付け</div><div class="step"><b>A6 Review</b>不足/矛盾/旧版</div><div class="step"><b>A7 Human</b>人レビューへ</div>
+</div>
+<h3>必須出力フォーマット（論理）</h3>
+<ul><li><code>facts[]</code>：原文に明示された事実</li><li><code>inferences[]</code>：AI推論。事実と分離</li>
+<li><code>unknowns[]</code>：不明・要確認</li><li><code>evidence_refs[]</code>：各事実の根拠</li>
+<li><code>conflicts[]</code>：矛盾・不一致</li><li><code>review_questions[]</code>：人に確認すべき事項</li></ul>
+<div class="callout danger"><strong>禁止：</strong>根拠のない値・条件・適用範囲を、事実として自動補完しない。推論する場合は推論として明示する。</div>
+</section>
+
+<section class="card" id="rag"><h2>8. 検索・RAG設計</h2>
+<h3>8.1 検索順序</h3>
+<ol><li>利用者権限で検索対象をフィルタ</li><li>承認済み知見を優先検索</li><li>全文検索＋属性検索＋ベクトル検索を組み合わせ</li>
+<li>必要に応じて未承認候補を「参考情報」として追加</li><li>根拠を再取得し回答を構成</li><li>回答に承認状態、適用条件、例外条件、版を付与</li></ol>
+<h3>8.2 ランキング要素</h3>
+<p>承認状態、検索類似度、工種一致、案件条件一致、基準版の新しさ、利用評価、根拠充足度を用いる。AI信頼度のみで順位を確定しない。</p>
+<h3>8.3 回答UI必須要素</h3>
+<ul><li>回答本文</li><li>「承認済み」「参考情報」の明示</li><li>根拠一覧と元資料リンク</li><li>適用条件・適用不可条件</li><li>関連知見・類似事例</li><li>版・承認日・承認者表示（権限範囲内）</li></ul>
+</section>
+
+<section class="card" id="review"><h2>9. レビュー・承認設計</h2>
+<div class="grid2">
+<div class="box"><h3>レビュー画面 左側</h3><ul><li>知見候補本文</li><li>課題・原因・対策・結果</li><li>適用条件・例外条件</li><li>AI信頼度・生成日時</li></ul></div>
+<div class="box"><h3>レビュー画面 右側</h3><ul><li>根拠原文・該当箇所</li><li>類似承認知見</li><li>矛盾・不足・旧版警告</li><li>AIが生成した確認質問</li></ul></div>
+</div>
+<h3>操作</h3><p>承認、差戻し、却下、専門責任者へエスカレーション、コメント、根拠追加、適用条件修正、タグ修正。</p>
+<h3>承認時バリデーション</h3><ul><li>根拠が1件以上存在すること。</li><li>タイトル、課題・事象、適用範囲の必須項目が埋まっていること。</li>
+<li>承認者権限を満たすこと。</li><li>未解決の重大矛盾がある場合は警告または承認禁止ルールを設定可能。</li></ul>
+</section>
+
+<section class="card" id="standard"><h2>10. 標準・仕様反映設計（Phase 2）</h2>
+<p>ApprovedKnowledgeから標準書・チェックリスト・教育資料への「改訂候補」を生成し、別承認フローへ渡す。</p>
+<div class="flow"><div class="step"><b>Approved</b>正式知見</div><div class="step"><b>Impact</b>影響標準抽出</div><div class="step"><b>Draft</b>改訂案</div><div class="step"><b>Compare</b>新旧差分</div><div class="step"><b>Human Review</b>標準管理者</div><div class="step"><b>Publish</b>正式発行</div></div>
+<div class="callout">AI生成の標準改訂案を、そのまま正式標準へ反映する経路は設けない。</div>
+</section>
+
+<section class="card" id="ui"><h2>11. 画面仕様</h2>
+<div class="table-wrap"><table><thead><tr><th>画面ID</th><th>画面名</th><th>主要機能</th></tr></thead><tbody>
+<tr><td>UI-01</td><td>ホーム</td><td>検索窓、レビュー待ち、最近の承認知見、KPIサマリ</td></tr>
+<tr><td>UI-02</td><td>検索・回答</td><td>自然言語検索、絞込、回答、根拠、関連知見</td></tr>
+<tr><td>UI-03</td><td>知見詳細</td><td>本文、適用条件、根拠、版、承認情報、履歴、利用実績</td></tr>
+<tr><td>UI-04</td><td>情報登録</td><td>テキスト/ファイル登録、出典、案件、工種、機密区分</td></tr>
+<tr><td>UI-05</td><td>AI処理結果</td><td>抽出項目、推論、不明、矛盾、根拠紐付けの確認</td></tr>
+<tr><td>UI-06</td><td>レビュー</td><td>候補＋根拠並列表示、承認/差戻し/却下/エスカレーション</td></tr>
+<tr><td>UI-07</td><td>承認キュー</td><td>担当別、期限、重要度、状態で一覧化</td></tr>
+<tr><td>UI-08</td><td>標準反映</td><td>影響標準、改訂案、新旧差分、別承認</td></tr>
+<tr><td>UI-09</td><td>KPI/分析</td><td>検索成功、レビュー時間、再利用、品質、学習指標</td></tr>
+<tr><td>UI-10</td><td>管理</td><td>ロール、分類体系、連携、AI設定、保持、監査</td></tr>
+</tbody></table></div>
+<h3>表示ルール</h3>
+<p><span class="badge human">承認済み</span> は緑系、<span class="badge ai">AI生成・参考</span> は紫系、<span class="badge tbd">要確認</span> は橙系など、状態を色＋文言の両方で表示し、色だけに依存しない。</p>
+</section>
+
+<section class="card" id="api"><h2>12. API論理仕様</h2>
+<div class="table-wrap"><table><thead><tr><th>Method</th><th>Path例</th><th>用途</th><th>認可</th></tr></thead><tbody>
+<tr><td>POST</td><td><code>/api/v1/sources</code></td><td>一次情報登録</td><td>Contributor+</td></tr>
+<tr><td>GET</td><td><code>/api/v1/sources/{id}</code></td><td>原文・メタデータ参照</td><td>閲覧権限</td></tr>
+<tr><td>POST</td><td><code>/api/v1/knowledge/candidates</code></td><td>知見候補生成要求</td><td>Contributor/Agent</td></tr>
+<tr><td>GET</td><td><code>/api/v1/knowledge/{id}</code></td><td>知見詳細</td><td>閲覧権限</td></tr>
+<tr><td>POST</td><td><code>/api/v1/reviews</code></td><td>レビュー依頼</td><td>Contributor+</td></tr>
+<tr><td>POST</td><td><code>/api/v1/reviews/{id}/approve</code></td><td>承認</td><td>Approver</td></tr>
+<tr><td>POST</td><td><code>/api/v1/reviews/{id}/return</code></td><td>差戻し</td><td>Reviewer+</td></tr>
+<tr><td>POST</td><td><code>/api/v1/search</code></td><td>検索/RAG</td><td>User+</td></tr>
+<tr><td>GET</td><td><code>/api/v1/audit</code></td><td>監査検索</td><td>Auditor/Admin</td></tr>
+<tr><td>GET</td><td><code>/api/v1/metrics</code></td><td>KPI</td><td>Manager/Admin</td></tr>
+</tbody></table></div>
+<p class="small muted">実装時のURL、認証方式、ペイロード形式は採用技術に合わせて確定する。</p>
+</section>
+
+<section class="card" id="auth"><h2>13. 権限・認可設計</h2>
+<div class="table-wrap"><table><thead><tr><th>操作</th><th>User</th><th>Contributor</th><th>Reviewer</th><th>Approver</th><th>Admin</th></tr></thead><tbody>
+<tr><td>承認済み知見閲覧</td><td>○</td><td>○</td><td>○</td><td>○</td><td>○</td></tr>
+<tr><td>一次情報登録</td><td>△</td><td>○</td><td>○</td><td>○</td><td>○</td></tr>
+<tr><td>知見候補編集</td><td>－</td><td>○</td><td>○</td><td>○</td><td>△</td></tr>
+<tr><td>レビュー</td><td>－</td><td>－</td><td>○</td><td>○</td><td>△</td></tr>
+<tr><td>正式承認</td><td>－</td><td>－</td><td>－</td><td>○</td><td>原則－</td></tr>
+<tr><td>AI/連携設定</td><td>－</td><td>－</td><td>－</td><td>－</td><td>○</td></tr>
+</tbody></table></div>
+<div class="callout warn">Admin権限が技術承認を自動的に包含しない設計を推奨。技術的責任とシステム管理責任を分離できるようにする。</div>
+</section>
+
+<section class="card" id="audit"><h2>14. 監査・版管理設計</h2>
+<h3>監査イベント</h3><p><code>LOGIN</code>, <code>VIEW</code>, <code>CREATE</code>, <code>UPDATE</code>, <code>AI_RUN</code>, <code>REVIEW</code>, <code>RETURN</code>, <code>APPROVE</code>, <code>REJECT</code>, <code>ARCHIVE</code>, <code>PERMISSION_CHANGE</code>, <code>CONFIG_CHANGE</code> を記録対象とする。</p>
+<h3>監査ログ項目</h3><p>event_id、timestamp、actor_id、role、action、object_type、object_id、before_version、after_version、reason、source_ip/端末情報（取得可能な範囲）、correlation_id。</p>
+<h3>版管理</h3><ul><li>承認済み知見を直接上書きせず、新版として作成する。</li><li>旧版はArchivedまたはSupersededとして参照可能にする。</li><li>根拠文書の版変更を検知した場合、影響知見をRevalidation-Requiredへ送れる。</li></ul>
+</section>
+
+<section class="card" id="quality"><h2>15. AI品質設計</h2>
+<div class="table-wrap"><table><thead><tr><th>品質観点</th><th>測定方法</th><th>制御</th></tr></thead><tbody>
+<tr><td>根拠性</td><td>根拠提示率、根拠到達率</td><td>evidence_refs必須、根拠なし回答の警告</td></tr>
+<tr><td>正確性</td><td>人レビューでの誤り率</td><td>採否・修正差分を保存</td></tr>
+<tr><td>分類</td><td>分類精度、タグ修正率</td><td>人修正を学習材料化</td></tr>
+<tr><td>検索</td><td>検索成功率、再検索率</td><td>ランキング・チャンク・辞書調整</td></tr>
+<tr><td>レビュー支援</td><td>不足検出有効率</td><td>指摘採用/却下理由を記録</td></tr>
+<tr><td>安全性</td><td>無断補完・根拠なし断定件数</td><td>構造化出力、ガードルール、人承認</td></tr>
+</tbody></table></div>
+<h3>AI実行記録</h3><p>model_id、model_version、prompt_version、retrieval_config_version、input_source_ids、output_hash、latency、token/cost等（取得可能な場合）、review_resultを保持する。</p>
+</section>
+
+<section class="card" id="error"><h2>16. エラー・例外設計</h2>
+<div class="table-wrap"><table><thead><tr><th>事象</th><th>システム動作</th><th>利用者表示</th></tr></thead><tbody>
+<tr><td>元資料取得失敗</td><td>再試行キュー＋エラーログ</td><td>「元資料を取得できません」</td></tr>
+<tr><td>破損/空ファイル</td><td>Quarantineへ隔離</td><td>取込失敗理由を表示</td></tr>
+<tr><td>AIタイムアウト</td><td>失敗記録、再実行可能</td><td>処理未完了、再実行ボタン</td></tr>
+<tr><td>根拠不足</td><td>候補生成可、承認時警告/制御</td><td>「根拠不足・要確認」</td></tr>
+<tr><td>矛盾検出</td><td>conflictsへ記録</td><td>重大度付き警告</td></tr>
+<tr><td>権限不足</td><td>処理拒否、監査記録</td><td>権限不足</td></tr>
+<tr><td>基準版変更</td><td>影響知見を再確認候補化</td><td>「再確認が必要」</td></tr>
+</tbody></table></div></section>
+
+<section class="card" id="batch"><h2>17. ジョブ・通知設計</h2>
+<ul><li><strong>差分取込ジョブ：</strong>連携元の変更を定期取得。</li><li><strong>インデックス更新：</strong>新規・更新文書を検索対象へ反映。</li>
+<li><strong>AI再処理：</strong>分類体系・プロンプト等変更時に対象を選択して再処理。</li><li><strong>再確認ジョブ：</strong>基準版更新・根拠変更時に影響知見を抽出。</li>
+<li><strong>レビュー滞留通知：</strong>未処理レビューを担当者へ通知。</li><li><strong>KPI集計：</strong>登録、検索、AI品質、レビュー、再利用、業務効果、品質、学習を集計。</li></ul>
+<p class="small muted">実行頻度・通知チャネルはPoC条件で確定する。</p>
+</section>
+
+<section class="card" id="observability"><h2>18. 監視・ログ設計</h2>
+<div class="grid2"><div class="box"><h3>システム監視</h3><ul><li>API成功/失敗率</li><li>AI処理成功/失敗率</li><li>連携取得失敗</li><li>検索応答時間</li><li>ジョブ滞留</li><li>ストレージ/DB容量</li></ul></div>
+<div class="box"><h3>業務品質監視</h3><ul><li>根拠なし候補率</li><li>レビュー滞留件数</li><li>差戻し率</li><li>誤情報率</li><li>検索成功率</li><li>再確認未処理件数</li></ul></div></div>
+<p>1処理を横断追跡するため <code>correlation_id</code> を付与し、取込 → AI → レビュー → 検索のログを関連付ける。</p>
+</section>
+
+<section class="card" id="test"><h2>19. テスト仕様</h2>
+<div class="table-wrap"><table><thead><tr><th>テスト</th><th>主要確認事項</th></tr></thead><tbody>
+<tr><td>単体</td><td>抽出、分類、状態遷移、権限、APIバリデーション</td></tr>
+<tr><td>結合</td><td>取込→構造化→レビュー→承認→検索の一連動作</td></tr>
+<tr><td>権限</td><td>未承認情報・機密情報が権限外へ表示されない</td></tr>
+<tr><td>監査</td><td>承認・差戻し・設定変更等が監査記録される</td></tr>
+<tr><td>AI品質</td><td>根拠提示、誤情報、分類、類似検索、矛盾検出</td></tr>
+<tr><td>回帰</td><td>プロンプト/モデル/検索設定変更前後の品質比較</td></tr>
+<tr><td>受入</td><td>実業務ケースで検索到達時間、レビュー時間、再利用性を評価</td></tr>
+</tbody></table></div>
+<h3>必須受入シナリオ</h3>
+<ol><li>未承認のAI候補は正式知見として検索結果に表示されない。</li><li>承認済み知見の回答から元資料へ到達できる。</li>
+<li>根拠版を変更すると、対象知見を再確認対象にできる。</li><li>承認権限のないユーザーはApprovedへ遷移できない。</li>
+<li>AIが不明条件を「確定事実」として保存しない。</li></ol>
+</section>
+
+<section class="card" id="poc"><h2>20. PoC実装範囲</h2>
+<div class="grid2"><div class="box green"><h3>PoCに含める</h3><ul><li>1テーマ・1部門・限定データ</li><li>手動/限定Connectorによる登録</li><li>原文・メタデータ保存</li><li>AI構造化・候補生成</li><li>根拠紐付け</li><li>人レビュー・承認</li><li>自然言語検索</li><li>監査ログ</li><li>KPI計測</li></ul></div>
+<div class="box"><h3>PoC後へ送る</h3><ul><li>全情報源の自動連携</li><li>全社ロール・部門階層の完全実装</li><li>標準書の高度な自動改訂支援</li><li>大規模ナレッジグラフ最適化</li><li>高度な効果分析</li><li>全社SLA/DR設計</li></ul></div></div>
+</section>
+
+<section class="card" id="tbd"><h2>21. 技術選定TBD</h2>
+<p>以下は企画書で承認されていないため、本設計では固定しない。</p>
+<ul><li><span class="badge tbd">TBD</span> Webフレームワーク、フロントエンド技術</li>
+<li><span class="badge tbd">TBD</span> RDB / ドキュメントDB / ベクトルDB製品</li>
+<li><span class="badge tbd">TBD</span> オブジェクトストレージ製品</li><li><span class="badge tbd">TBD</span> AIモデル・AI API・Embeddingモデル</li>
+<li><span class="badge tbd">TBD</span> 認証基盤・SSO方式</li><li><span class="badge tbd">TBD</span> Slack / Microsoft 365 / CDE等の実連携方式</li>
+<li><span class="badge tbd">TBD</span> インフラ配置、ネットワーク、CI/CD、バックアップ製品</li></ul>
+<div class="callout ok"><strong>選定条件：</strong>採用製品が何であっても、原文保全・根拠追跡・承認分離・監査・版管理・権限制御を満たすことを必須とする。</div>
+</section>
+</main>
+<div class="footer">社内ナレッジ循環基盤｜承認済み企画書を上位文書として作成｜2026-08-26</div>
+</body></html>

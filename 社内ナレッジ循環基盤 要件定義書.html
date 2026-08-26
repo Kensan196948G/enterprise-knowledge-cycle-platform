@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社内ナレッジ循環基盤 要件定義書</title>
+<style>
+:root{
+  --bg:#f3f6fb;--card:#fff;--ink:#172033;--muted:#5f6f86;--line:#d9e2ef;
+  --navy:#102a4c;--blue:#2563eb;--blue2:#eaf1ff;--green:#16803d;--green2:#eaf8ef;
+  --orange:#c15b0b;--orange2:#fff2e8;--purple:#7540c9;--purple2:#f2ecff;--red:#b42318;--red2:#fff0ee;
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Yu Gothic",sans-serif;line-height:1.72}
+header{background:linear-gradient(135deg,#0f2747,#174f88 58%,#2563eb);color:#fff;padding:54px 24px 44px}
+.wrap{max-width:1180px;margin:auto}.eyebrow{display:inline-block;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:5px 11px;font-size:12px;background:rgba(255,255,255,.08)}
+h1{font-size:clamp(28px,4.6vw,48px);line-height:1.25;margin:14px 0 10px}header p{max-width:930px;margin:0;color:#e7eef9}
+main{max-width:1180px;margin:auto;padding:30px 24px 70px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;margin:0 0 22px;box-shadow:0 7px 26px rgba(17,40,71,.05)}
+h2{color:var(--navy);font-size:25px;margin:0 0 16px}h3{color:#233f63;font-size:19px;margin:20px 0 10px}
+p{margin:8px 0}.lead{font-size:17px}.muted{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.box{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff}.box.blue{background:var(--blue2)}.box.green{background:var(--green2)}.box.purple{background:var(--purple2)}.box.orange{background:var(--orange2)}
+.callout{border-left:5px solid var(--blue);background:var(--blue2);border-radius:10px;padding:16px 18px;margin:14px 0}
+.warn{border-left-color:var(--orange);background:var(--orange2)}.danger{border-left-color:var(--red);background:var(--red2)}.ok{border-left-color:var(--green);background:var(--green2)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#f6f8fc;color:#294461;white-space:nowrap}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+code{background:#eef2f7;padding:2px 5px;border-radius:5px}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2f7;color:#31445e}.badge.req{background:var(--blue2);color:#1d4ed8}.badge.human{background:var(--green2);color:#166534}.badge.ai{background:var(--purple2);color:#6d28d9}.badge.tbd{background:var(--orange2);color:#9a4b07}
+.flow{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}.step{min-width:125px;border:1px solid var(--line);border-radius:11px;padding:12px;background:#fff}.step b{display:block;color:var(--navy)}
+.toc{columns:2;column-gap:34px}.toc a{color:#245da8;text-decoration:none}.toc li{break-inside:avoid;margin:4px 0}
+ul,ol{padding-left:1.3em}.small{font-size:13px}
+.footer{color:var(--muted);font-size:12px;text-align:center;padding:12px 24px 35px}
+@media(max-width:850px){.grid2,.grid3{grid-template-columns:1fr}.toc{columns:1}.card{padding:20px}}
+@media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}header{-webkit-print-color-adjust:exact;print-color-adjust:exact}.toc a{color:#000}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<span class="eyebrow">Enterprise Knowledge Cycle Platform｜Requirements Definition</span>
+<h1>社内ナレッジ循環基盤 要件定義書</h1>
+<p>人 × AIで知見を標準化する循環型ナレッジ基盤。承認済み企画を、業務・機能・AI・データ・権限・監査・PoC要件へ具体化した要件定義書。</p>
+</div></header>
+<main>
+<section class="card" id="doc">
+<h2>0. 文書管理</h2>
+<div class="table-wrap"><table>
+<tr><th>文書名</th><td>社内ナレッジ循環基盤 要件定義書</td><th>プロジェクト</th><td>Enterprise Knowledge Cycle Platform</td></tr>
+<tr><th>リポジトリ名</th><td><code>enterprise-knowledge-cycle-platform</code></td><th>版</th><td>1.0（承認企画書反映版）</td></tr>
+<tr><th>位置づけ</th><td colspan="3">承認済み企画書を上位文書とし、システム化に必要な業務・機能・データ・非機能・統制要件を定義する。</td></tr>
+</table></div>
+<div class="callout"><strong>最重要原則：</strong>「AI生成＝参考案」「人が承認した知見＝正式知見」をシステム上・データ上・UI上で分離する。</div>
+</section>
+
+<section class="card" id="toc"><h2>目次</h2><ol class="toc">
+<li><a href="#purpose">目的・背景</a></li><li><a href="#scope">対象範囲</a></li><li><a href="#principles">基本原則</a></li>
+<li><a href="#stakeholder">利用者・役割</a></li><li><a href="#business">業務要件</a></li><li><a href="#functional">機能要件</a></li>
+<li><a href="#ai">AI要件</a></li><li><a href="#data">データ要件</a></li><li><a href="#workflow">承認ワークフロー要件</a></li>
+<li><a href="#search">検索・活用要件</a></li><li><a href="#security">セキュリティ・権限要件</a></li><li><a href="#audit">監査・版管理要件</a></li>
+<li><a href="#nonfunc">非機能要件</a></li><li><a href="#integration">連携要件</a></li><li><a href="#poc">PoC要件</a></li>
+<li><a href="#kpi">KPI・受入基準</a></li><li><a href="#roadmap">導入ロードマップ</a></li><li><a href="#tbd">未決事項</a></li>
+</ol></section>
+
+<section class="card" id="purpose"><h2>1. 目的・背景</h2>
+<p class="lead">日々の業務で生まれる経験・判断・失敗・工夫・技術的気づきを、単なる文書保管ではなく、<strong>収集 → 統合 → 構造化 → 知見候補化 → 人レビュー → 承認 → 再利用 → 効果検証</strong>まで循環させる。</p>
+<div class="grid2">
+<div class="box"><h3>解決する課題</h3><ul><li>ベテラン・特定担当者への問い合わせ集中</li><li>過去資料探索に時間がかかる</li><li>同じ失敗・同じ検討が繰り返される</li><li>知見が現場・個人・文書に分散する</li><li>教育・標準改訂へ知見が反映されにくい</li></ul></div>
+<div class="box"><h3>実現する状態</h3><ul><li>根拠付きで過去知見を検索・再利用できる</li><li>AIが整理役・比較役・レビュー補助役を担う</li><li>人が技術判断・承認・標準化の責任を持つ</li><li>利用実績と効果が次の改善材料として蓄積される</li></ul></div>
+</div></section>
+
+<section class="card" id="scope"><h2>2. 対象範囲</h2>
+<div class="table-wrap"><table><thead><tr><th>区分</th><th>対象</th><th>備考</th></tr></thead><tbody>
+<tr><td>一次情報</td><td>日報、設計検討、施工上の工夫、トラブル、改善案、会議、写真、図面、文書、設計計算書、検討書等</td><td>企画書に例示された情報源を対象候補とする</td></tr>
+<tr><td>情報源連携</td><td>Slack、社内文書・共有ストレージ、Google Drive / Microsoft 365、CDE・BIM/CIM、施工管理、安全・品質記録等</td><td>PoCでは対象を限定し段階連携</td></tr>
+<tr><td>AI処理</td><td>統合、抽出、分類、タグ付け、類似検索、候補生成、レビュー支援、標準改訂支援、効果分析</td><td>自動確定は禁止</td></tr>
+<tr><td>人の業務</td><td>事実確認、技術レビュー、適用範囲判断、例外判断、正式承認、標準発行</td><td>Human-in-the-loop必須</td></tr>
+<tr><td>PoC</td><td>情報収集 → AI構造化 → 知見候補 → 人レビュー → 検索利用</td><td>標準改訂自動化は第2段階</td></tr>
+</tbody></table></div>
+<div class="callout warn"><strong>対象外：</strong>AI単独による技術判断の確定、出典不明情報の正式知見化、承認なしの社内標準自動改訂。</div>
+</section>
+
+<section class="card" id="principles"><h2>3. 基本原則</h2>
+<div class="grid3">
+<div class="box blue"><h3>Evidence First</h3><p>AI回答・知見候補・レビュー結果は、元資料・根拠・版へ追跡可能とする。</p></div>
+<div class="box green"><h3>Human Authority</h3><p>正式知見、適用範囲、例外条件、標準化は、人の承認を必要とする。</p></div>
+<div class="box purple"><h3>Continuous Cycle</h3><p>利用結果・採否・効果指標を蓄積し、次の知見候補生成・レビュー改善へ戻す。</p></div>
+</div></section>
+
+<section class="card" id="stakeholder"><h2>4. 利用者・役割要件</h2>
+<div class="table-wrap"><table><thead><tr><th>ロール</th><th>責務</th><th>主な権限</th></tr></thead><tbody>
+<tr><td>一般利用者</td><td>検索、参照、一次情報登録、フィードバック</td><td>閲覧、登録、自分の登録内容修正</td></tr>
+<tr><td>技術レビュー担当</td><td>技術的妥当性、適用条件、例外条件、表現の確認</td><td>レビュー、差戻し、コメント、承認依頼</td></tr>
+<tr><td>専門分野責任者</td><td>高度・重要案件の判断</td><td>上位レビュー、承認・却下</td></tr>
+<tr><td>標準管理者</td><td>標準書・チェックリスト・教育資料への反映判断</td><td>標準改訂案の承認・発行管理</td></tr>
+<tr><td>システム管理者</td><td>利用者、権限、連携、監査、保守</td><td>管理機能全般。ただし技術承認権限とは分離可能</td></tr>
+<tr><td>AI/データ管理者</td><td>AI設定、検索品質、データ品質、モデル・プロンプト管理</td><td>AI設定変更、再処理、品質評価</td></tr>
+</tbody></table></div>
+</section>
+
+<section class="card" id="business"><h2>5. 業務要件</h2>
+<div class="flow">
+<div class="step"><b>1 記録</b><span>一次情報登録</span></div><div class="step"><b>2 統合</b><span>関連情報収集</span></div>
+<div class="step"><b>3 構造化</b><span>項目抽出</span></div><div class="step"><b>4 候補化</b><span>知見ドラフト</span></div>
+<div class="step"><b>5 AIレビュー</b><span>根拠・不足・矛盾</span></div><div class="step"><b>6 人レビュー</b><span>承認・差戻し</span></div>
+<div class="step"><b>7 標準反映</b><span>改訂候補</span></div><div class="step"><b>8 効果検証</b><span>利用・品質評価</span></div>
+</div>
+<h3>業務ルール</h3><ul>
+<li>一次情報の事実性は登録者または情報責任者が担保する。</li>
+<li>AIは不明条件を無断補完せず、「不明」「要確認」として扱う。</li>
+<li>承認済み知見は承認者、承認日時、根拠、適用条件、版を保持する。</li>
+<li>条件・根拠・基準版の変更時は、影響する承認済み知見を再確認対象にできること。</li>
+<li>採用・却下・差戻し理由を記録し、品質改善データとして再利用する。</li>
+</ul></section>
+
+<section class="card" id="functional"><h2>6. 機能要件</h2>
+<div class="table-wrap"><table><thead><tr><th>ID</th><th>機能</th><th>必須要件</th><th>優先</th></tr></thead><tbody>
+<tr><td>FR-01</td><td>情報登録</td><td>文書・テキスト・画像・図面等の登録、出典情報、案件・工種等メタデータ付与</td><td>Must</td></tr>
+<tr><td>FR-02</td><td>情報統合</td><td>複数情報源から関連情報を収集・紐付けし、元情報との参照関係を保持</td><td>Must</td></tr>
+<tr><td>FR-03</td><td>AI構造化</td><td>案件、工種、設備、原因、対策、条件、適用範囲、根拠、成果等を抽出</td><td>Must</td></tr>
+<tr><td>FR-04</td><td>知見候補生成</td><td>重複統合、類似事例比較、成功・失敗条件整理、ドラフト生成</td><td>Must</td></tr>
+<tr><td>FR-05</td><td>AIレビュー支援</td><td>根拠提示、類似事例、矛盾、不足、旧版基準、要確認事項を提示</td><td>Must</td></tr>
+<tr><td>FR-06</td><td>人レビュー</td><td>承認、却下、差戻し、コメント、専門責任者エスカレーション</td><td>Must</td></tr>
+<tr><td>FR-07</td><td>正式知見管理</td><td>承認済み知見のみを公式領域へ昇格し、未承認情報と明確に分離</td><td>Must</td></tr>
+<tr><td>FR-08</td><td>自然言語検索</td><td>質問に対し回答＋承認済み知見＋元資料＋適用条件＋例外条件を提示</td><td>Must</td></tr>
+<tr><td>FR-09</td><td>標準改訂支援</td><td>標準書、チェックリスト、教育資料、手順書の改訂候補を生成</td><td>Phase 2</td></tr>
+<tr><td>FR-10</td><td>効果分析</td><td>利用状況、再発率、時間削減、品質改善等を集計・可視化</td><td>Should</td></tr>
+<tr><td>FR-11</td><td>通知</td><td>レビュー依頼、差戻し、承認、再確認、基準版変更などを通知</td><td>Should</td></tr>
+<tr><td>FR-12</td><td>管理</td><td>分類、タグ、ロール、AI設定、連携設定、監査ログ、保持設定を管理</td><td>Must</td></tr>
+</tbody></table></div></section>
+
+<section class="card" id="ai"><h2>7. AI要件</h2>
+<div class="grid2">
+<div class="box purple"><h3>AIが実行してよいこと</h3><ul><li>抽出・分類・タグ付け</li><li>類似度判定・重複候補提示</li><li>知見候補ドラフト生成</li><li>根拠候補と類似事例提示</li><li>矛盾・不足・旧版基準の警告</li><li>レビュー観点・チェック項目提示</li><li>利用実績と効果指標集計</li></ul></div>
+<div class="box green"><h3>AIに任せないこと</h3><ul><li>技術判断の最終確定</li><li>適用範囲・例外条件の最終決定</li><li>正式知見への自動昇格</li><li>公式標準の自動発行</li><li>根拠のない条件補完</li></ul></div>
+</div>
+<h3>AI品質要件</h3><ul>
+<li>回答・知見候補ごとに根拠情報を提示する。</li><li>根拠が見つからない場合は、その旨を明示する。</li>
+<li>AI信頼度は参考指標として保持し、承認の代替には使わない。</li><li>プロンプト・モデル・検索設定の変更履歴を追跡可能にする。</li>
+<li>誤情報、採否、差戻し理由を評価データとして保存できる。</li>
+</ul></section>
+
+<section class="card" id="data"><h2>8. データ要件</h2>
+<div class="table-wrap"><table><thead><tr><th>カテゴリ</th><th>主要項目</th><th>要件</th></tr></thead><tbody>
+<tr><td>識別</td><td>ナレッジID、タイトル、版、ステータス</td><td>一意識別・履歴追跡</td></tr>
+<tr><td>出所</td><td>元情報、出典、原文参照、発生案件・現場</td><td>原文へ戻れること</td></tr>
+<tr><td>分類</td><td>工種、業務分類、設備、タグ</td><td>複数分類・後編集可能</td></tr>
+<tr><td>技術内容</td><td>課題・事象、原因、対応、結果、成功/失敗</td><td>構造化＋原文保持</td></tr>
+<tr><td>適用性</td><td>適用条件、注意条件、適用不可条件</td><td>検索回答時に必ず考慮</td></tr>
+<tr><td>根拠</td><td>基準・仕様・版、根拠資料、関連事例</td><td>参照切れ検出・版追跡</td></tr>
+<tr><td>統制</td><td>AI信頼度、レビュー者、承認者、承認日時</td><td>監査証跡として保存</td></tr>
+<tr><td>評価</td><td>利用回数、評価、再利用先、効果、採否理由</td><td>継続改善へ利用</td></tr>
+</tbody></table></div>
+<div class="callout">原文データとAI生成データは混同せず、<strong>「原文」「AI抽出」「AI生成」「人修正」「承認済み」</strong>を識別できる属性を持つ。</div>
+</section>
+
+<section class="card" id="workflow"><h2>9. 承認ワークフロー要件</h2>
+<ol><li>情報登録</li><li>AI構造化</li><li>知見候補生成</li><li>AIレビュー支援</li><li>技術担当者レビュー</li><li>必要時、専門分野責任者へエスカレーション</li><li>承認済み知見へ昇格</li><li>標準化対象は別ワークフローへ送付</li><li>発行後の利用・効果追跡</li></ol>
+<h3>状態</h3>
+<div class="table-wrap"><table><tr><th>状態</th><th>意味</th></tr>
+<tr><td>Draft</td><td>一次情報・編集中</td></tr><tr><td>AI-Processed</td><td>AI構造化済み</td></tr>
+<tr><td>Review-Pending</td><td>人レビュー待ち</td></tr><tr><td>Returned</td><td>差戻し</td></tr>
+<tr><td>Approved</td><td>承認済み正式知見</td></tr><tr><td>Rejected</td><td>却下・非採用</td></tr>
+<tr><td>Revalidation-Required</td><td>基準版・条件変更等により再確認が必要</td></tr><tr><td>Archived</td><td>旧版・廃止・参照専用</td></tr>
+</table></div></section>
+
+<section class="card" id="search"><h2>10. 検索・活用要件</h2>
+<ul><li>キーワード、分類、案件、工種、期間、ステータス、承認状態で絞り込み可能。</li>
+<li>自然言語質問を受け付ける。</li><li>検索回答は、承認済み情報を優先表示する。</li>
+<li>回答には、根拠資料、引用元、適用条件、例外条件、版、承認状態を併記する。</li>
+<li>未承認情報を使用する場合は「参考情報」であることを明示する。</li>
+<li>回答から元資料・関連知見・類似事例へ遷移できる。</li></ul></section>
+
+<section class="card" id="security"><h2>11. セキュリティ・権限要件</h2>
+<ul><li>閲覧・登録・編集・レビュー・承認・管理の権限を役割別に制御する。</li>
+<li>機密情報・個人情報は権限、マスキング、保持期間を設定可能にする。</li><li>情報源側のアクセス権を無視して横断公開しない。</li>
+<li>AI処理対象外とする機密区分を設定できる。</li><li>管理者操作、権限変更、承認操作を監査記録する。</li>
+<li>技術承認権限とシステム管理権限は、必要に応じて職務分離できる。</li></ul></section>
+
+<section class="card" id="audit"><h2>12. 監査・版管理要件</h2>
+<ul><li>誰が、いつ、何を、どの根拠で、どの状態からどの状態へ変更したか記録する。</li>
+<li>知見本文、適用条件、根拠、分類、承認状態の変更履歴を保持する。</li><li>基準・仕様の版数を管理する。</li>
+<li>旧版知見を削除せず、原則として履歴参照可能にする。</li><li>AIモデル・AI設定・プロンプト・検索設定の変更履歴を保持する。</li></ul></section>
+
+<section class="card" id="nonfunc"><h2>13. 非機能要件</h2>
+<div class="table-wrap"><table><thead><tr><th>ID</th><th>分類</th><th>要件</th></tr></thead><tbody>
+<tr><td>NFR-01</td><td>可用性</td><td>PoCは業務検証に必要な稼働を確保。本番SLAは展開段階で決定。</td></tr>
+<tr><td>NFR-02</td><td>性能</td><td>通常検索・一覧・詳細画面は業務利用を阻害しない応答性を目標とし、AI処理は進捗表示を行う。</td></tr>
+<tr><td>NFR-03</td><td>拡張性</td><td>情報源、分類、AIモデル、検索方式を交換・追加できる疎結合構成とする。</td></tr>
+<tr><td>NFR-04</td><td>保守性</td><td>ルール、プロンプト、分類体系、承認経路をコード改修最小で変更できる。</td></tr>
+<tr><td>NFR-05</td><td>可観測性</td><td>処理失敗、連携失敗、AI失敗、検索品質、レビュー滞留を監視可能にする。</td></tr>
+<tr><td>NFR-06</td><td>バックアップ</td><td>承認済み知見、メタデータ、監査ログ、設定の復旧手段を持つ。</td></tr>
+<tr><td>NFR-07</td><td>アクセシビリティ</td><td>PCを基本に、主要操作は一般的なブラウザで利用可能とする。</td></tr>
+<tr><td>NFR-08</td><td>説明可能性</td><td>AI出力について、参照根拠・検索元・処理状態を利用者が確認できる。</td></tr>
+</tbody></table></div></section>
+
+<section class="card" id="integration"><h2>14. 連携要件</h2>
+<p>企画書で挙げられた情報源を「連携候補」とし、PoCでは対象テーマに必要なものだけを選定する。</p>
+<div class="grid2"><div class="box"><h3>入力連携</h3><ul><li>Slack</li><li>社内文書・共有ストレージ</li><li>Google Drive / Microsoft 365</li><li>CDE・BIM/CIM</li><li>施工管理、安全・品質記録</li><li>写真、動画、図面、設計計算書</li></ul></div>
+<div class="box"><h3>連携共通条件</h3><ul><li>元情報ID・URL・版・更新日時等を保持</li><li>差分取得・再取込を考慮</li><li>アクセス権を継承または同期</li><li>連携エラーを記録・再処理可能</li><li>連携対象外データを指定可能</li></ul></div></div>
+</section>
+
+<section class="card" id="poc"><h2>15. PoC要件</h2>
+<p class="lead">PoCは<strong>1テーマ・1部門・限定データ</strong>で実施し、知識循環が実際に回るかを確認する。</p>
+<div class="grid3"><div class="box">設計照査・設計検討ノウハウ</div><div class="box">仮設計画・施工計画の過去事例</div><div class="box">品質不具合と再発防止</div><div class="box">現場改善・省力化事例</div><div class="box">技術問い合わせと回答履歴</div><div class="box">2年次教育等の技術教育Q&A</div></div>
+<h3>PoC必須機能</h3><p>登録、AI構造化、知見候補生成、AIレビュー支援、人レビュー・承認、自然言語検索、根拠表示、基本監査ログ、KPI計測。</p>
+</section>
+
+<section class="card" id="kpi"><h2>16. KPI・受入基準</h2>
+<div class="table-wrap"><table><thead><tr><th>領域</th><th>指標</th><th>PoC合格基準</th></tr></thead><tbody>
+<tr><td>登録</td><td>登録件数・登録者数・情報欠落率</td><td><span class="badge tbd">要PoC開始前確定</span></td></tr>
+<tr><td>検索</td><td>回答到達時間・検索成功率・再検索率</td><td><span class="badge tbd">要確定</span></td></tr>
+<tr><td>AI品質</td><td>分類精度・根拠提示率・誤情報率</td><td><span class="badge tbd">要確定</span></td></tr>
+<tr><td>レビュー</td><td>レビュー時間・差戻し率</td><td><span class="badge tbd">要確定</span></td></tr>
+<tr><td>再利用</td><td>参照回数・類似案件への再利用率</td><td><span class="badge tbd">要確定</span></td></tr>
+<tr><td>業務効果</td><td>資料作成・問い合わせ・手戻り削減</td><td><span class="badge tbd">要確定</span></td></tr>
+<tr><td>品質</td><td>同種不具合再発率・標準逸脱件数</td><td><span class="badge tbd">要確定</span></td></tr>
+<tr><td>学習</td><td>利用者評価・採用/却下理由蓄積率</td><td><span class="badge tbd">要確定</span></td></tr>
+</tbody></table></div>
+<div class="callout ok"><strong>受入の共通必須条件：</strong>AI出力を人が承認せず正式知見化できないこと、根拠へ追跡できること、未承認情報と承認済み情報がUIで識別できること。</div>
+</section>
+
+<section class="card" id="roadmap"><h2>17. 導入ロードマップ</h2>
+<div class="grid2">
+<div class="box"><h3>Phase 1｜PoC</h3><p>限定テーマで収集・構造化・検索・レビューを検証。</p></div>
+<div class="box"><h3>Phase 2｜技術部門展開</h3><p>複数分野へ拡張し、承認済み知見DB・レビュー運用を整備。</p></div>
+<div class="box"><h3>Phase 3｜標準・仕様連携</h3><p>社内標準、チェックリスト、教育資料の改訂候補をAI生成。</p></div>
+<div class="box"><h3>Phase 4｜全社循環</h3><p>設計・施工・品質・安全・DX・教育を横断し継続更新。</p></div>
+</div></section>
+
+<section class="card" id="tbd"><h2>18. 未決事項・次工程決定事項</h2>
+<ul>
+<li><span class="badge tbd">TBD</span> PoC対象テーマ</li><li><span class="badge tbd">TBD</span> 利用部門・レビュー責任者・専門責任者</li>
+<li><span class="badge tbd">TBD</span> 初期対象データの所在・アクセス権・保持条件</li><li><span class="badge tbd">TBD</span> 承認レベル・エスカレーション条件</li>
+<li><span class="badge tbd">TBD</span> AI利用可能データ・機密区分</li><li><span class="badge tbd">TBD</span> 連携対象システムと連携方式</li>
+<li><span class="badge tbd">TBD</span> KPIの数値目標・PoC合格閾値</li><li><span class="badge tbd">TBD</span> 本番SLA・RTO/RPO・保持年限</li>
+</ul>
+<div class="callout warn">本要件定義書では、承認企画書に記載のない製品・クラウド・DB・AIモデルを固定していない。詳細技術選定はPoC条件決定後に行う。</div>
+</section>
+</main>
+<div class="footer">社内ナレッジ循環基盤｜承認済み企画書を上位文書として作成｜2026-08-26</div>
+</body></html>

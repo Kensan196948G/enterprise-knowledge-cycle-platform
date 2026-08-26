@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>社内ナレッジシステム企画案｜人×AIで知見を標準化する循環型ナレッジ基盤</title>
+<style>
+:root{
+  --bg:#f4f7fb; --card:#ffffff; --ink:#172033; --muted:#61708a;
+  --line:#dbe3ef; --blue:#2563eb; --blue2:#eaf1ff; --green:#15803d;
+  --green2:#e9f8ee; --orange:#c25b09; --orange2:#fff1e6;
+  --purple:#7c3aed; --purple2:#f1ebff; --navy:#0f2747;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;line-height:1.75}
+.hero{background:linear-gradient(135deg,#0f2747 0%,#1e4f8a 60%,#2563eb 100%);color:#fff;padding:64px 24px 52px}
+.wrap{max-width:1180px;margin:0 auto}
+.hero h1{font-size:clamp(30px,5vw,54px);line-height:1.25;margin:0 0 18px;font-weight:800;letter-spacing:.01em}
+.hero p{max-width:920px;font-size:18px;margin:0;color:#e7eef9}
+.badge{display:inline-block;padding:6px 12px;border:1px solid rgba(255,255,255,.35);border-radius:999px;font-size:13px;margin-bottom:18px;background:rgba(255,255,255,.08)}
+main{padding:36px 24px 72px}
+section{margin:0 auto 26px;max-width:1180px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 8px 30px rgba(18,38,63,.05)}
+h2{font-size:27px;margin:0 0 18px;color:var(--navy)}
+h3{font-size:20px;margin:0 0 12px;color:#21385b}
+.lead{font-size:18px}
+.callout{padding:18px 20px;border-left:5px solid var(--blue);background:var(--blue2);border-radius:10px;margin-top:18px}
+.flow{display:grid;grid-template-columns:repeat(8,minmax(125px,1fr));gap:10px;align-items:stretch;overflow-x:auto;padding-bottom:4px}
+.step{min-width:125px;border:1px solid var(--line);border-radius:14px;padding:16px 12px;background:#fff;position:relative}
+.step .num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--navy);color:#fff;font-weight:700;font-size:13px;margin-bottom:10px}
+.step.ai{background:var(--blue2);border-color:#bcd0ff}
+.step.human{background:var(--green2);border-color:#b9e5c6}
+.step.mix{background:var(--purple2);border-color:#d8c9ff}
+.step small{display:block;color:var(--muted);margin-top:6px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.mini{border:1px solid var(--line);border-radius:14px;padding:20px;background:#fff}
+.mini.ai{border-top:5px solid var(--blue)}
+.mini.human{border-top:5px solid var(--green)}
+.mini.mix{border-top:5px solid var(--purple)}
+ul{padding-left:1.2em;margin:8px 0}
+li{margin:.25em 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:12px 11px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{background:#f7f9fc;color:#2b405f}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.quote{background:#101d32;color:#f5f8ff;padding:16px 18px;border-radius:12px;margin:10px 0;font-size:15px}
+.arch{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:18px;align-items:stretch}
+.arch .layer{border-radius:14px;padding:20px;border:1px solid var(--line);background:#fff}
+.arch .layer:nth-child(1){background:#f8fafc}
+.arch .layer:nth-child(2){background:var(--blue2)}
+.arch .layer:nth-child(3){background:var(--purple2)}
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.phase{border-radius:14px;padding:20px;border:1px solid var(--line);background:#fff}
+.phase b{display:block;color:var(--blue);margin-bottom:8px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px}
+.kpi b{display:block;color:var(--navy);margin-bottom:5px}
+.footer{max-width:1180px;margin:0 auto;padding:0 24px 50px;color:var(--muted);font-size:13px}
+@media(max-width:900px){
+ .grid2,.grid3,.arch,.timeline,.kpi-grid{grid-template-columns:1fr}
+ .hero{padding-top:42px}
+ .card{padding:22px}
+}
+@media print{
+ body{background:#fff}
+ .card{box-shadow:none;break-inside:avoid}
+ .hero{background:#173f72!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="badge">社内ナレッジ循環基盤｜Enterprise Knowledge Cycle Platform</div>
+    <h1>人 × AIで知見を標準化する<br>循環型ナレッジ基盤</h1>
+    <p>日々の業務で生まれる経験・判断・失敗・工夫・技術的な気づきを、AIが統合・構造化し、人がレビュー・承認。現場知を「会社の標準知」に育て、再利用と効果検証まで循環させる。</p>
+  </div>
+</header>
+
+<main>
+<section class="card">
+  <h2>1. 企画概要</h2>
+  <p class="lead">本企画は、資料を蓄積するだけの文書庫ではなく、<strong>現場の経験を会社の標準知へ昇格させ、再利用し、その効果まで検証する仕組み</strong>を構築するものです。</p>
+  <p>基本思想は、AIに正解を決めさせることではありません。AIは大量情報の整理・比較・候補化・レビュー支援を担い、技術的な確定判断と正式な標準化は人が責任を持ちます。</p>
+  <div class="grid3" style="margin-top:18px">
+    <div class="mini"><h3>プロジェクト名（日本語）</h3><p><strong>社内ナレッジ循環基盤</strong></p></div>
+    <div class="mini"><h3>プロジェクト名（英語）</h3><p><strong>Enterprise Knowledge Cycle Platform</strong></p></div>
+    <div class="mini"><h3>レポジトリ名</h3><p><code>enterprise-knowledge-cycle-platform</code></p></div>
+  </div>
+
+  <div class="callout"><strong>AI生成＝参考案、承認済み＝正式知見。</strong> この境界をシステム上で明確に分離することを最重要ルールとします。</div>
+</section>
+
+<section class="card">
+  <h2>2. 全体フロー</h2>
+  <div class="flow">
+    <div class="step human"><div class="num">1</div><strong>記録する</strong><small>人間</small></div>
+    <div class="step ai"><div class="num">2</div><strong>統合する</strong><small>AI・システム</small></div>
+    <div class="step ai"><div class="num">3</div><strong>構造化する</strong><small>AI</small></div>
+    <div class="step ai"><div class="num">4</div><strong>知見候補化</strong><small>AI</small></div>
+    <div class="step ai"><div class="num">5</div><strong>レビュー支援</strong><small>AI</small></div>
+    <div class="step human"><div class="num">6</div><strong>レビュー・承認</strong><small>人間</small></div>
+    <div class="step mix"><div class="num">7</div><strong>仕様・標準へ反映</strong><small>人＋AI支援</small></div>
+    <div class="step mix"><div class="num">8</div><strong>効果検証・再学習</strong><small>AI集計＋人評価</small></div>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:#15803d"></i>人間が責任を持つ工程</span>
+    <span><i class="dot" style="background:#2563eb"></i>AI中心の工程</span>
+    <span><i class="dot" style="background:#7c3aed"></i>人とAIの協働工程</span>
+  </div>
+</section>
+
+<section class="card">
+  <h2>3. 各工程の役割</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>工程</th><th>主担当</th><th>主な処理</th><th>成果物</th></tr></thead>
+    <tbody>
+      <tr><td>記録</td><td>人間</td><td>日報、設計検討、施工上の工夫、トラブル、改善案、会議、写真・図面・文書を登録</td><td>一次情報</td></tr>
+      <tr><td>統合</td><td>AI・システム</td><td>Slack、文書、CDE、施工管理、議事録などから関連情報を収集・関連付け</td><td>統合データ</td></tr>
+      <tr><td>構造化</td><td>AI</td><td>案件、工種、設備、原因、対策、条件、適用範囲、根拠、成果などを抽出</td><td>構造化ナレッジ</td></tr>
+      <tr><td>知見候補化</td><td>AI</td><td>重複統合、類似事例検索、成功・失敗条件を整理</td><td>知見候補</td></tr>
+      <tr><td>技術レビュー支援</td><td>AI</td><td>根拠資料提示、類似事例比較、矛盾・不足・旧版基準を警告</td><td>レビュー資料</td></tr>
+      <tr><td>レビュー・承認</td><td>人間</td><td>技術的妥当性、適用範囲、例外条件、表現を確認</td><td>承認済み知見</td></tr>
+      <tr><td>仕様・標準へ反映</td><td>人間＋AI</td><td>標準書、チェックリスト、教育資料、設計・施工手順の改訂案を作成</td><td>標準・仕様案</td></tr>
+      <tr><td>効果検証・再学習</td><td>AI＋人間</td><td>利用状況、再発率、時間削減、品質改善を評価</td><td>改善評価・次期学習材料</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="card">
+  <h2>4. AIと人間の責任分界</h2>
+  <div class="grid2">
+    <div class="mini ai">
+      <h3>AIが担当する領域</h3>
+      <ul>
+        <li>大量データの検索・統合</li><li>文書・会話・帳票からの項目抽出</li>
+        <li>タグ付け、分類、類似度判定</li><li>重複・矛盾・不足情報の検出</li>
+        <li>知見候補のドラフト生成</li><li>適用条件・例外条件・根拠資料の候補提示</li>
+        <li>過去事例・基準類との照合</li><li>レビュー観点・チェック項目の提示</li>
+        <li>利用実績・効果指標の集計</li>
+      </ul>
+    </div>
+    <div class="mini human">
+      <h3>人間が責任を持つ領域</h3>
+      <ul>
+        <li>一次情報の事実性</li><li>技術判断の確定</li>
+        <li>適用可能範囲の決定</li><li>例外条件の判断</li>
+        <li>標準化するか否かの承認</li><li>公式仕様・標準の発行</li>
+        <li>AI出力に対する最終責任</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>5. ナレッジ1件あたりの基本データモデル</h2>
+  <div class="grid3">
+    <div class="mini"><h3>出所・背景</h3><ul><li>ナレッジID</li><li>タイトル</li><li>元情報／出典</li><li>発生プロジェクト・現場</li><li>工種・業務分類</li></ul></div>
+    <div class="mini"><h3>技術内容</h3><ul><li>課題・事象</li><li>原因</li><li>実施した対応</li><li>結果</li><li>成功／失敗</li><li>適用条件</li><li>注意・適用不可条件</li></ul></div>
+    <div class="mini"><h3>統制・評価</h3><ul><li>基準・仕様・版</li><li>根拠資料</li><li>AI信頼度</li><li>ステータス</li><li>レビュー者／承認者</li><li>改訂履歴</li><li>利用回数・効果評価</li></ul></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>6. 検索・活用イメージ</h2>
+  <p>利用者は単純な全文検索だけではなく、自然言語で質問します。AIは回答だけでなく、<strong>承認済みナレッジ・元資料・適用条件・例外条件</strong>を併記します。</p>
+  <div class="quote">「港湾工事でコンクリート打設時に過去発生した不具合と対策を教えて」</div>
+  <div class="quote">「この仮設計画に似た過去案件と注意点を出して」</div>
+  <div class="quote">「この設計条件で見落としやすい確認事項を一覧化して」</div>
+</section>
+
+<section class="card">
+  <h2>7. 想定システム構成</h2>
+  <div class="arch">
+    <div class="layer">
+      <h3>情報源</h3>
+      <ul><li>Slack</li><li>社内文書・共有ストレージ</li><li>Google Drive / Microsoft 365</li><li>CDE・BIM/CIM</li><li>施工管理システム</li><li>日報・安全・品質記録</li><li>写真・動画・図面</li><li>設計計算書・検討書</li><li>社内標準・仕様書・基準類</li></ul>
+    </div>
+    <div class="layer">
+      <h3>ナレッジ基盤</h3>
+      <ul><li>原文データストア</li><li>メタデータDB</li><li>ベクトルDB／RAG</li><li>ナレッジグラフ</li><li>承認済み知見DB</li><li>標準・仕様DB</li><li>版管理・監査ログ</li></ul>
+    </div>
+    <div class="layer">
+      <h3>AI機能</h3>
+      <ul><li>文書解析AI</li><li>分類・タグ付けAI</li><li>類似事例検索</li><li>知見候補生成Agent</li><li>技術レビュー支援Agent</li><li>標準書改訂支援Agent</li><li>効果分析Agent</li></ul>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>8. 承認ワークフロー</h2>
+  <ol>
+    <li>現場・技術者が情報を登録</li>
+    <li>AIが既存情報と統合し構造化</li>
+    <li>AIが「知見候補」を生成</li>
+    <li>AIが根拠資料・類似事例・不足情報を提示</li>
+    <li>技術担当者がレビュー</li>
+    <li>必要に応じて専門分野責任者へエスカレーション</li>
+    <li>承認されたものだけを「社内公式ナレッジ」に昇格</li>
+    <li>標準化対象は別途、標準改訂承認を実施</li>
+    <li>発行後、利用実績と効果を追跡</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>9. AI品質・ガバナンス設計</h2>
+  <div class="grid2">
+    <div>
+      <ul>
+        <li>AI回答には必ず根拠情報を紐付ける</li>
+        <li>出典不明の内容は正式知見へ昇格させない</li>
+        <li>未確認情報と承認済み情報をUI上で明確に区別</li>
+        <li>基準・仕様の版数を管理</li>
+        <li>条件変更時は過去承認の再確認を要求</li>
+      </ul>
+    </div>
+    <div>
+      <ul>
+        <li>AIが不明条件を無断補完しない</li>
+        <li>重要判断はHuman-in-the-loopを必須化</li>
+        <li>閲覧・編集・承認権限を役割別に設定</li>
+        <li>個人・機密情報は権限・マスキング・保持期間を管理</li>
+        <li>誰が・いつ・何を根拠に承認したか監査可能にする</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>10. PoC案</h2>
+  <p class="lead">最初から全社を対象にせず、<strong>1テーマ・1部門・限定データ</strong>で「知識循環が実際に回るか」を検証します。</p>
+  <div class="grid3">
+    <div class="mini"><h3>候補A</h3><p>設計照査・設計検討ノウハウ</p></div>
+    <div class="mini"><h3>候補B</h3><p>仮設計画・施工計画の過去事例</p></div>
+    <div class="mini"><h3>候補C</h3><p>品質不具合と再発防止</p></div>
+    <div class="mini"><h3>候補D</h3><p>現場改善・省力化事例</p></div>
+    <div class="mini"><h3>候補E</h3><p>技術問い合わせと回答履歴</p></div>
+    <div class="mini"><h3>候補F</h3><p>2年次教育など技術教育Q&amp;A</p></div>
+  </div>
+  <div class="callout">PoCの対象範囲は「情報収集 → AI構造化 → 知見候補 → 人レビュー → 検索利用」まで。標準改訂の自動化は第2段階とします。</div>
+</section>
+
+<section class="card">
+  <h2>11. PoC評価指標</h2>
+  <div class="kpi-grid">
+    <div class="kpi"><b>登録</b>登録件数・登録者数・情報欠落率</div>
+    <div class="kpi"><b>検索</b>回答到達時間・検索成功率・再検索率</div>
+    <div class="kpi"><b>AI品質</b>分類精度・根拠提示率・誤情報率</div>
+    <div class="kpi"><b>レビュー</b>1件あたりレビュー時間・差戻し率</div>
+    <div class="kpi"><b>再利用</b>参照回数・類似案件への再利用率</div>
+    <div class="kpi"><b>業務効果</b>資料作成・問い合わせ・手戻り削減</div>
+    <div class="kpi"><b>品質</b>同種不具合再発率・標準逸脱件数</div>
+    <div class="kpi"><b>学習</b>利用者評価・採用／却下理由の蓄積率</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>12. 導入ロードマップ</h2>
+  <div class="timeline">
+    <div class="phase"><b>Phase 1｜PoC</b>限定テーマで収集・構造化・検索・レビューを検証。</div>
+    <div class="phase"><b>Phase 2｜技術部門展開</b>複数分野へ拡張し、承認済み知見DBとレビュー運用を整備。</div>
+    <div class="phase"><b>Phase 3｜標準・仕様連携</b>社内標準・チェックリスト・教育資料の改訂候補をAI生成。</div>
+    <div class="phase"><b>Phase 4｜全社循環</b>設計・施工・品質・安全・DX・教育を横断し、継続的に知見を更新。</div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>13. 本企画のポイント</h2>
+  <ul>
+    <li>「AIに全部任せる」設計ではない</li>
+    <li>AIは知識整理・比較・候補化・レビュー支援に集中</li>
+    <li>公式知見への昇格は人間の承認を必須化</li>
+    <li>元資料と判断結果を常に追跡可能にする</li>
+    <li>利用・評価結果を次の知見へ戻し、継続改善する</li>
+    <li>経験豊富な技術者の暗黙知を、次世代が再利用できる形へ変える</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>14. 期待効果</h2>
+  <div class="grid2">
+    <ul>
+      <li>ベテラン技術者への問い合わせ集中を軽減</li>
+      <li>過去資料を探す時間を削減</li>
+      <li>同じ失敗・検討の繰り返しを削減</li>
+      <li>技術レビュー品質を底上げ</li>
+    </ul>
+    <ul>
+      <li>設計・施工ノウハウの属人化を緩和</li>
+      <li>若手教育を高度化</li>
+      <li>社内標準の更新サイクルを短縮</li>
+      <li>「記録しただけ」で終わらない知識循環を実現</li>
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <h2>15. 次の検討事項</h2>
+  <ul>
+    <li>PoC対象テーマの決定</li>
+    <li>利用部門・レビュー責任者の決定</li>
+    <li>既存データの所在とアクセス権整理</li>
+    <li>承認レベル・責任分界の定義</li>
+    <li>AI利用可能データと機密区分の整理</li>
+    <li>既存Slack・CDE・文書管理基盤との連携方針</li>
+    <li>PoCのKPIと合格基準の設定</li>
+  </ul>
+  <div class="callout"><strong>まずは完璧な全社システムを狙わない。</strong> 小さなテーマで知識循環が回るかを確かめ、AIを「100点の先生」ではなく「優秀な整理役・レビュー補助役」として育てていく。</div>
+</section>
+</main>
+
+<div class="footer">作成：建設DX・AI共創コミュニティ向け企画案 / HTML版</div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+name: ekcp
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ekcp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ekcp}
+      POSTGRES_DB: ${POSTGRES_DB:-ekcp}
+    ports:
+      - "127.0.0.1:${EKCP_PG_HOST_PORT:-15544}:5432"
+    volumes:
+      - ekcp_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ekcp}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      PORT: 8210
+      DATABASE_URL: postgres://${POSTGRES_USER:-ekcp}:${POSTGRES_PASSWORD:-ekcp}@postgres:5432/${POSTGRES_DB:-ekcp}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-real-environments}
+      CORS_ORIGINS: http://localhost:${EKCP_WEB_HOST_PORT:-3210}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+    ports:
+      - "127.0.0.1:${EKCP_API_HOST_PORT:-8210}:8210"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8210}
+    environment:
+      PORT: 3210
+    ports:
+      - "127.0.0.1:${EKCP_WEB_HOST_PORT:-3210}:3210"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  ekcp_pg_data:
