@@ -131,9 +131,15 @@ export const api = {
       body: JSON.stringify(patch),
     }),
   listUsers: () => request<{ items: import("./types").AdminUser[] }>("/api/v1/admin/users"),
-  updateUser: (id: string, patch: { role?: string; department?: string | null }) =>
+  createUser: (input: { name: string; email: string; role: string; department?: string | null; password: string }) =>
+    request<import("./types").AdminUser>("/api/v1/admin/users", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  updateUser: (id: string, patch: { name?: string; email?: string; role?: string; department?: string | null }) =>
     request<import("./types").AdminUser>(`/api/v1/admin/users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
+  deleteUser: (id: string) => request<void>(`/api/v1/admin/users/${id}`, { method: "DELETE" }),
 };

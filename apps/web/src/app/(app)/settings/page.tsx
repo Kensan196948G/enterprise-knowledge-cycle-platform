@@ -15,6 +15,8 @@ const ROLE_LABEL: Record<Role, string> = {
 
 const ROLE_OPTIONS: Role[] = ["user", "contributor", "reviewer", "approver", "admin"];
 
+const inputClass = "rounded-lg border border-borderc px-2.5 py-1.5 text-[13px] outline-none focus:border-accent";
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const [settings, setSettings] = useState<SystemSettings | null>(null);
@@ -23,6 +25,8 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   async function load() {
     setError(null);
@@ -68,6 +72,45 @@ export default function SettingsPage() {
     }
   }
 
+  async function saveUserEdit(id: string, patch: { name: string; email: string; department: string | null }) {
+    setError(null);
+    setMessage(null);
+    try {
+      const updated = await api.updateUser(id, patch);
+      setUsers((prev) => prev?.map((u) => (u.id === id ? { ...u, ...updated } : u)) ?? null);
+      setMessage(`${updated.name} の情報を更新しました。`);
+      setEditingId(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "更新に失敗しました");
+    }
+  }
+
+  async function deleteUser(u: AdminUser) {
+    if (!window.confirm(`${u.name}（${u.email}）を削除します。この操作は取り消せません。よろしいですか？`)) return;
+    setError(null);
+    setMessage(null);
+    try {
+      await api.deleteUser(u.id);
+      setUsers((prev) => prev?.filter((x) => x.id !== u.id) ?? null);
+      setMessage(`${u.name} を削除しました。`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "削除に失敗しました");
+    }
+  }
+
+  async function createUser(input: { name: string; email: string; role: Role; department: string | null; password: string }) {
+    setError(null);
+    setMessage(null);
+    try {
+      const created = await api.createUser(input);
+      setUsers((prev) => [...(prev ?? []), created]);
+      setMessage(`${created.name} を追加しました。`);
+      setCreating(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "追加に失敗しました");
+    }
+  }
+
   if (forbidden) {
     return (
       <div className="mx-auto max-w-[600px] rounded-[10px] border border-borderc bg-white p-8 text-center shadow-sm">
@@ -99,34 +142,63 @@ export default function SettingsPage() {
       {error && <div className="rounded-lg border border-red-200 bg-rejectBg px-4 py-2 text-sm text-reject">{error}</div>}
 
       <section className="rounded-[10px] border border-borderc bg-white shadow-sm">
-        <div className="border-b border-panel px-5 py-3.5">
-          <div className="text-[14px] font-semibold text-ink">ユーザー・ロール管理</div>
-          <div className="mt-0.5 text-[11.5px] text-muted">利用者ごとにロールを変更できます。変更は監査ログに記録されます。</div>
+        <div className="flex items-center gap-3 border-b border-panel px-5 py-3.5">
+          <div>
+            <div className="text-[14px] font-semibold text-ink">ユーザー・ロール管理</div>
+            <div className="mt-0.5 text-[11.5px] text-muted">利用者の追加・編集・削除・ロール変更ができます。変更は監査ログに記録されます。</div>
+          </div>
+          <div className="flex-1" />
+          <button
+            onClick={() => setCreating((v) => !v)}
+            className="shrink-0 rounded-lg border border-accent bg-accent px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-accentHover"
+          >
+            {creating ? "キャンセル" : "+ 新規追加"}
+          </button>
         </div>
+
+        {creating && <CreateUserForm onCreate={createUser} onCancel={() => setCreating(false)} />}
+
         <div className="flex flex-col">
-          {users.map((u) => (
-            <div key={u.id} className="flex items-center gap-3.5 border-b border-panel px-5 py-3 last:border-b-0">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-ink">{u.name}</p>
-                <p className="truncate text-[11.5px] text-muted">
-                  {u.email}
-                  {u.department ? ` · ${u.department}` : ""}
-                </p>
+          {users.map((u) =>
+            editingId === u.id ? (
+              <EditUserRow key={u.id} user={u} onSave={(patch) => saveUserEdit(u.id, patch)} onCancel={() => setEditingId(null)} />
+            ) : (
+              <div key={u.id} className="flex items-center gap-3.5 border-b border-panel px-5 py-3 last:border-b-0">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-ink">{u.name}</p>
+                  <p className="truncate text-[11.5px] text-muted">
+                    {u.email}
+                    {u.department ? ` · ${u.department}` : ""}
+                  </p>
+                </div>
+                <select
+                  value={u.role}
+                  disabled={u.id === user?.id}
+                  onChange={(e) => changeUserRole(u.id, e.target.value as Role)}
+                  className="rounded-lg border border-borderc bg-white px-2.5 py-1.5 text-xs text-ink outline-none disabled:opacity-50"
+                >
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setEditingId(u.id)}
+                  className="shrink-0 rounded-md border border-borderc px-2.5 py-1 text-[11px] font-semibold text-subtle hover:bg-panel"
+                >
+                  編集
+                </button>
+                <button
+                  onClick={() => deleteUser(u)}
+                  disabled={u.id === user?.id}
+                  className="shrink-0 rounded-md border border-red-200 px-2.5 py-1 text-[11px] font-semibold text-reject hover:bg-rejectBg disabled:opacity-40"
+                >
+                  削除
+                </button>
               </div>
-              <select
-                value={u.role}
-                disabled={u.id === user?.id}
-                onChange={(e) => changeUserRole(u.id, e.target.value as Role)}
-                className="rounded-lg border border-borderc bg-white px-2.5 py-1.5 text-xs text-ink outline-none disabled:opacity-50"
-              >
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r} value={r}>
-                    {ROLE_LABEL[r]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
+            ),
+          )}
         </div>
       </section>
 
@@ -199,6 +271,102 @@ export default function SettingsPage() {
           MVP検証環境バナーを表示する
         </label>
       </section>
+    </div>
+  );
+}
+
+function CreateUserForm({
+  onCreate,
+  onCancel,
+}: {
+  onCreate: (input: { name: string; email: string; role: Role; department: string | null; password: string }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [department, setDepartment] = useState("");
+  const [role, setRole] = useState<Role>("user");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2.5 border-b border-panel bg-panel/40 px-5 py-4">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="氏名" className={inputClass} />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className={inputClass} />
+        <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="所属部署（任意）" className={inputClass} />
+        <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
+          {ROLE_OPTIONS.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABEL[r]}
+            </option>
+          ))}
+        </select>
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="初期パスワード（8文字以上）"
+          type="text"
+          className={inputClass}
+        />
+      </div>
+      <div className="flex gap-2">
+        <button
+          disabled={submitting || !name.trim() || !email.trim() || password.length < 8}
+          onClick={async () => {
+            setSubmitting(true);
+            await onCreate({ name: name.trim(), email: email.trim(), role, department: department.trim() || null, password });
+            setSubmitting(false);
+          }}
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:bg-accentHover disabled:opacity-50"
+        >
+          追加
+        </button>
+        <button onClick={onCancel} className="rounded-lg border border-borderc px-4 py-1.5 text-xs font-semibold text-subtle">
+          キャンセル
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EditUserRow({
+  user,
+  onSave,
+  onCancel,
+}: {
+  user: AdminUser;
+  onSave: (patch: { name: string; email: string; department: string | null }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(user.name);
+  const [email, setEmail] = useState(user.email);
+  const [department, setDepartment] = useState(user.department ?? "");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <div className="flex flex-col gap-2.5 border-b border-panel bg-panel/40 px-5 py-3.5 last:border-b-0">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="氏名" className={inputClass} />
+        <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="メールアドレス" className={inputClass} />
+        <input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="所属部署" className={inputClass} />
+      </div>
+      <div className="flex gap-2">
+        <button
+          disabled={submitting || !name.trim() || !email.trim()}
+          onClick={async () => {
+            setSubmitting(true);
+            await onSave({ name: name.trim(), email: email.trim(), department: department.trim() || null });
+            setSubmitting(false);
+          }}
+          className="rounded-lg border border-accent bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:bg-accentHover disabled:opacity-50"
+        >
+          保存
+        </button>
+        <button onClick={onCancel} className="rounded-lg border border-borderc px-4 py-1.5 text-xs font-semibold text-subtle">
+          キャンセル
+        </button>
+      </div>
     </div>
   );
 }

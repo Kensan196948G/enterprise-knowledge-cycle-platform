@@ -9,6 +9,21 @@ import { permissions } from "../lib/rbac.js";
 import { getSettings } from "../lib/settings.js";
 import { isAnthropicConfigured } from "../lib/ai-structuring.js";
 import { recordAudit } from "../lib/audit.js";
+import { hashPassword } from "../lib/auth.js";
+
+/** node-postgres が付与するエラーコード。参照: https://www.postgresql.org/docs/current/errcodes-appendix.html */
+const PG_UNIQUE_VIOLATION = "23505";
+const PG_FOREIGN_KEY_VIOLATION = "23503";
+
+/** DrizzleQueryError は元のpgエラーを .cause に包むため、両方を確認する */
+function pgErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== "object") return undefined;
+  if ("code" in err && typeof (err as { code: unknown }).code === "string") {
+    return (err as { code: string }).code;
+  }
+  if ("cause" in err) return pgErrorCode((err as { cause: unknown }).cause);
+  return undefined;
+}
 
 export const adminRoutes = new Hono();
 
@@ -92,7 +107,63 @@ adminRoutes.get("/users", requireRole(permissions.manageAdmin), async (c) => {
   return c.json({ items: rows });
 });
 
+const createUserSchema = z.object({
+  name: z.string().min(1).max(120),
+  email: z.string().email().max(200),
+  role: z.enum(roleEnum.enumValues),
+  department: z.string().max(120).nullable().optional(),
+  password: z.string().min(8).max(200),
+});
+
+/** ユーザーの新規作成: システム管理者のみ。作成は監査ログに記録する。 */
+adminRoutes.post("/users", requireRole(permissions.manageAdmin), async (c) => {
+  const actor = c.get("user");
+  const body = await c.req.json().catch(() => null);
+  const parsed = createUserSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "入力値が不正です", details: parsed.error.flatten() }, 400);
+  }
+
+  try {
+    const created = await db.transaction(async (tx) => {
+      const passwordHash = await hashPassword(parsed.data.password);
+      const [row] = await tx
+        .insert(users)
+        .values({
+          name: parsed.data.name,
+          email: parsed.data.email,
+          passwordHash,
+          role: parsed.data.role,
+          department: parsed.data.department ?? null,
+        })
+        .returning({ id: users.id, name: users.name, email: users.email, role: users.role, department: users.department, createdAt: users.createdAt });
+
+      await recordAudit(
+        {
+          actorId: actor.id,
+          role: actor.role,
+          action: "CREATE",
+          objectType: "user",
+          objectId: row.id,
+          reason: `role: ${row.role}`,
+        },
+        tx,
+      );
+      return row;
+    });
+
+    return c.json(created, 201);
+  } catch (err) {
+    if (pgErrorCode(err) === PG_UNIQUE_VIOLATION) {
+      return c.json({ error: "このメールアドレスは既に使用されています" }, 409);
+    }
+    throw err;
+  }
+});
+
 const updateUserSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  email: z.string().email().max(200).optional(),
   role: z.enum(roleEnum.enumValues).optional(),
   department: z.string().max(120).nullable().optional(),
 });
@@ -128,6 +199,10 @@ adminRoutes.patch("/users/:id", requireRole(permissions.manageAdmin), async (c) 
       }
 
       if (existing.role === "admin" && parsed.data.role && parsed.data.role !== "admin") {
+        // 異なるadminユーザーの同時降格が両方とも「admin>=2」を読んで両方成功する
+        // (admin 0人になる)ことを防ぐため、この不変条件のチェックはアドバイザリ
+        // ロックで直列化する(対象行のFOR UPDATEは対象行自身のみを保護するため不十分)。
+        await tx.execute(sql`select pg_advisory_xact_lock(872346123)`);
         const [{ count }] = await tx
           .select({ count: sql<number>`count(*)::int` })
           .from(users)
@@ -160,6 +235,70 @@ adminRoutes.patch("/users/:id", requireRole(permissions.manageAdmin), async (c) 
     return c.json(updated);
   } catch (err) {
     if (err instanceof HTTPException) return err.getResponse();
+    if (pgErrorCode(err) === PG_UNIQUE_VIOLATION) {
+      return c.json({ error: "このメールアドレスは既に使用されています" }, 409);
+    }
+    throw err;
+  }
+});
+
+/**
+ * ユーザーの削除: システム管理者のみ。自分自身の削除・最後の管理者の削除は
+ * 拒否する。知見・登録データが関連付けられているユーザーは外部キー制約により
+ * 削除できないため、409で分かりやすいエラーを返す(監査証跡・版管理を保全する
+ * ため、関連データの強制削除は行わない)。
+ */
+adminRoutes.delete("/users/:id", requireRole(permissions.manageAdmin), async (c) => {
+  const actor = c.get("user");
+  const idParsed = userIdParamSchema.safeParse(c.req.param("id"));
+  if (!idParsed.success) {
+    return c.json({ error: "ユーザーIDが不正です" }, 400);
+  }
+  const id = idParsed.data;
+
+  if (id === actor.id) {
+    return c.json({ error: "自分自身を削除することはできません" }, 409);
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(users).where(eq(users.id, id)).for("update");
+      if (!existing) {
+        throw new HTTPException(404, { message: "ユーザーが見つかりません" });
+      }
+
+      if (existing.role === "admin") {
+        await tx.execute(sql`select pg_advisory_xact_lock(872346123)`);
+        const [{ count }] = await tx
+          .select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(eq(users.role, "admin"));
+        if (count <= 1) {
+          throw new HTTPException(409, { message: "最後のシステム管理者は削除できません" });
+        }
+      }
+
+      await recordAudit(
+        {
+          actorId: actor.id,
+          role: actor.role,
+          action: "DELETE",
+          objectType: "user",
+          objectId: id,
+          reason: `email: ${existing.email}`,
+        },
+        tx,
+      );
+
+      await tx.delete(users).where(eq(users.id, id));
+    });
+
+    return c.body(null, 204);
+  } catch (err) {
+    if (err instanceof HTTPException) return err.getResponse();
+    if (pgErrorCode(err) === PG_FOREIGN_KEY_VIOLATION) {
+      return c.json({ error: "このユーザーには関連する操作履歴・登録データ（監査ログ・知見・一次情報等）が存在するため削除できません" }, 409);
+    }
     throw err;
   }
 });
