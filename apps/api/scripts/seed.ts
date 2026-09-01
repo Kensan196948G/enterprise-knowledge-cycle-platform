@@ -138,39 +138,46 @@ async function main() {
 
   console.log("[seed] inserting sources ...");
   const existingSources = await db.select().from(schema.sources);
-  let sourceRows = existingSources;
-  if (existingSources.length === 0) {
-    sourceRows = [];
+  // ローカルの `npm run test` はDBをtruncateしてテスト固有データを残すため、
+  // 「1件でも存在すれば投入済み」という判定だとテスト残留データに惑わされて
+  // デモデータ本体が二度と投入されなくなる。既知のデモsourceタイトルの有無で判定する。
+  const hasDemoSources = existingSources.some((s) => s.title === SOURCE_TEXTS[0].title);
+  if (!hasDemoSources) {
     for (const [i, s] of SOURCE_TEXTS.entries()) {
       const owner = i % 2 === 0 ? contributor1 : contributor2;
-      const [row] = await db
-        .insert(schema.sources)
-        .values({
-          title: s.title,
-          sourceType: "manual",
-          originSystem: "web",
-          contentText: s.content,
-          contentHash: contentHash(s.content),
-          projectSite: s.projectSite,
-          confidentiality: "internal",
-          ownerId: owner.id,
-        })
-        .returning();
-      sourceRows.push(row);
+      await db.insert(schema.sources).values({
+        title: s.title,
+        sourceType: "manual",
+        originSystem: "web",
+        contentText: s.content,
+        contentHash: contentHash(s.content),
+        projectSite: s.projectSite,
+        confidentiality: "internal",
+        ownerId: owner.id,
+      });
     }
   } else {
     console.log("[seed] sources already present, skipping insert.");
   }
+  // テスト残留の同名以外のsourceが混在していても取り違えないよう、配列添字ではなく
+  // タイトルで名前引きする(既存分・新規投入分どちらでもDB再取得後は一意に解決できる)。
+  const allSources = await db.select().from(schema.sources);
+  const sourceByTitle = new Map(allSources.map((s) => [s.title, s]));
+  function sourceFor(index: number) {
+    const s = sourceByTitle.get(SOURCE_TEXTS[index].title);
+    if (!s) throw new Error(`[seed] demo source not found: ${SOURCE_TEXTS[index].title}`);
+    return s;
+  }
 
   const existingKnowledge = await db.select().from(schema.knowledgeItems);
-  if (existingKnowledge.length > 0) {
+  const hasDemoKnowledge = existingKnowledge.some((k) => k.title === SOURCE_TEXTS[0].title);
+  if (hasDemoKnowledge) {
     console.log("[seed] knowledge_items already present, skipping. (idempotent re-run)");
-    await pool.end();
     return;
   }
 
   async function structureAndCreate(sourceIndex: number, title?: string) {
-    const source = sourceRows[sourceIndex];
+    const source = sourceFor(sourceIndex);
     const structured = structureWithRules(source.contentText, [source.id]);
     const [item] = await db
       .insert(schema.knowledgeItems)
@@ -340,7 +347,7 @@ async function main() {
 
   // 8: Draft（人手登録のみ、AI未処理）
   {
-    const source = sourceRows[7];
+    const source = sourceFor(7);
     await db.insert(schema.knowledgeItems).values({
       title: source.title,
       status: "draft",
