@@ -138,8 +138,12 @@ async function main() {
 
   console.log("[seed] inserting sources ...");
   const existingSources = await db.select().from(schema.sources);
+  // ローカルの `npm run test` はDBをtruncateしてテスト固有データを残すため、
+  // 「1件でも存在すれば投入済み」という判定だとテスト残留データに惑わされて
+  // デモデータ本体が二度と投入されなくなる。既知のデモsourceタイトルの有無で判定する。
+  const hasDemoSources = existingSources.some((s) => s.title === SOURCE_TEXTS[0].title);
   let sourceRows = existingSources;
-  if (existingSources.length === 0) {
+  if (!hasDemoSources) {
     sourceRows = [];
     for (const [i, s] of SOURCE_TEXTS.entries()) {
       const owner = i % 2 === 0 ? contributor1 : contributor2;
@@ -163,9 +167,9 @@ async function main() {
   }
 
   const existingKnowledge = await db.select().from(schema.knowledgeItems);
-  if (existingKnowledge.length > 0) {
+  const hasDemoKnowledge = existingKnowledge.some((k) => k.title === SOURCE_TEXTS[0].title);
+  if (hasDemoKnowledge) {
     console.log("[seed] knowledge_items already present, skipping. (idempotent re-run)");
-    await pool.end();
     return;
   }
 

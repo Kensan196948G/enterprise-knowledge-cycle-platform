@@ -4,6 +4,12 @@ import { db, pool } from "../src/db/client.js";
 import { users } from "../src/db/schema.js";
 import { hashPassword } from "../src/lib/auth.js";
 
+// ローカル開発の.envはMVP検証環境を模してAUTH_MODE=openを設定していることがある。
+// knowledge-flow等の通常テストはsecure(fail-closed)前提のため、ここで明示的に
+// 解除し、ローカル/CIどちらでも決定的にsecureモードでテストが走るようにする。
+// (auth-mode.test.tsはopenモード自体を対象にするため各itの中で明示的に設定する)
+delete process.env.AUTH_MODE;
+
 export const TEST_PASSWORD = "Test#Pass2026";
 
 export async function resetDatabase() {
